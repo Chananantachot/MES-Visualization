@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MES Products Rate Visualization</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
 </head> 
 <body>
     <div class="container">
         <h1>Welcome to MES Products Rate Visualization</h1>
-        <p>This is a fake/hardcode product rates.</p>
+        <p>This is a fake/mock product rates data.</p>
         <canvas id="myChart"></canvas>
     </div>
 </body>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="{{ url_for('static', filename='app.js') }}"></script>
 </html>
