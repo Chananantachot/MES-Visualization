@@ -1,6 +1,7 @@
 from opcua import Server
-import random
 import uuid
+import json
+import os
 
 def run():
     server = Server()
@@ -13,15 +14,26 @@ def run():
    # uri = "http://examples.freeopcua.github.io"
    # idx = server.register_namespace(uri)
 
-    # Create Products folder
+   # Create Products folder
     products_folder = objects.add_folder("ns=3;s=Products", "Products")
-    # Create ProductRate variable
-    for i in range(1, 11):
-        product_name = f'Products({i})'
-        product = products_folder.add_object(f"ns=3;s={product_name}", product_name)
-        product_rate = product.add_variable(f"ns=3;s={uuid.uuid4()}", "ProductRate", round(random.uniform(1, 10),2))
-        product_rate.set_writable()
-
+    path = os.path.join("static", "data", "MOCK_DATA.json")
+    
+    with open(path, "r") as f:
+        data = json.load(f)
+       
+        unique_entries = {}
+        for item in data:
+            # Create a new object for each product
+            product_name = item['product_name']
+            if product_name not in unique_entries:
+                unique_entries[product_name] = item
+        
+        for item in unique_entries.values():
+            product_name = item['product_name']
+            product = products_folder.add_object(f"ns=3;s={product_name}", product_name)
+            product_rate = product.add_variable(f"ns=3;s={uuid.uuid4()}", "ProductRate", item['productRate'])
+            product_rate.set_writable()
+ 
     print("Server started. You can connect to opc.tcp://0.0.0.0:4840/server/")
 
     # Keep the server running

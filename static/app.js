@@ -1,4 +1,4 @@
-const ALERT_THRESHOLD = 10;
+const ALERT_THRESHOLD = Math.random().toFixed(2);
 const ctx = document.getElementById('myChart').getContext('2d');
 const myChart = new Chart(ctx, {
     type: 'line',
@@ -6,11 +6,15 @@ const myChart = new Chart(ctx, {
         labels: [],
         datasets: [{
             label: 'Product Rates',
-            data: []
+            data: [],
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1,
+            pointBackgroundColor: 'blue',
         }]
     },
     options: {
-        responsive: false,
+        responsive: true,
         maintainAspectRatio: true,
         scales: {
             x: {
