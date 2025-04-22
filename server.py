@@ -1,5 +1,4 @@
 from opcua import Server
-import uuid
 import json
 import os
 
@@ -11,27 +10,24 @@ def run():
    
     # get Objects node, this is where we should put our nodes
     objects = server.get_objects_node()
-   # uri = "http://examples.freeopcua.github.io"
-   # idx = server.register_namespace(uri)
+    uri = "http://examples.freeopcua.github.io"
+    idx = server.register_namespace(uri)
 
    # Create Products folder
-    products_folder = objects.add_folder("ns=3;s=Products", "Products")
+    products_folder = objects.add_folder(f"ns={idx};s=Products", "Products")
+
     path = os.path.join("static", "data", "MOCK_DATA.json")
-    
     with open(path, "r") as f:
         data = json.load(f)
        
         unique_entries = {}
         for item in data:
-            # Create a new object for each product
-            product_name = item['product_name']
-            if product_name not in unique_entries:
-                unique_entries[product_name] = item
+            if item['product_name'] not in unique_entries:
+                unique_entries[item['product_name']] = item
         
         for item in unique_entries.values():
-            product_name = item['product_name']
-            product = products_folder.add_object(f"ns=3;s={product_name}", product_name)
-            product_rate = product.add_variable(f"ns=3;s={uuid.uuid4()}", "ProductRate", item['productRate'])
+            product = products_folder.add_object(f"ns={idx};s={item['product_name']}", item['product_name'])
+            product_rate = product.add_variable(idx, "ProductRate", item['productRate'])
             product_rate.set_writable()
  
     print("Server started. You can connect to opc.tcp://0.0.0.0:4840/server/")

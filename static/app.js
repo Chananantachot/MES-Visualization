@@ -1,4 +1,4 @@
-const ALERT_THRESHOLD = Math.random().toFixed(2);
+const ALERT_THRESHOLD = 40;
 const ctx = document.getElementById('myChart').getContext('2d');
 const myChart = new Chart(ctx, {
     type: 'line',
@@ -36,7 +36,7 @@ function updateChart() {
         .then(response => response.json())
         .then(data => {
             myChart.data.labels = data.labels;
-            myChart.data.datasets[0].data =  data.data;
+            myChart.data.datasets[0].data = data.data;
 
             const pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
             myChart.data.datasets[0].pointBackgroundColor = pointColors;
