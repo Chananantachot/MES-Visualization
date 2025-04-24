@@ -1,6 +1,10 @@
 from flask import Flask, url_for ,render_template
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
+from sklearn.model_selection import train_test_split
+from sklearn.inspection import permutation_importance
 import matplotlib
 from opcua import Client
 import numpy as np
@@ -11,7 +15,6 @@ import json
 import random
 
 matplotlib.use('Agg')
-#data_table.to_parquet("large_dataset_results.parquet")
 
 # Generate random temperature and motor speed data
 temperature = np.linspace(20, 100, 50)
@@ -21,11 +24,101 @@ motor_speed = 5000 - (temperature * 30) + np.random.normal(0, 100, size=50)
 temp_norm = (temperature - temperature.mean()) / temperature.std()
 speed_norm = (motor_speed - motor_speed.mean()) / motor_speed.std()
 
+# Step 1: Generate dummy sensor data
+def generate_sensor_data():
+    np.random.seed(42)
+    n = 100
+    temperature = np.random.normal(70, 10, n)
+    humidity = np.random.normal(50, 15, n)
+    vibration = np.random.normal(0.3, 0.1, n)
+    age = np.random.randint(50, 500, n)
+    signal_loss = 0.1 * temperature + 0.2 * humidity + 30 * vibration + 0.05 * age + np.random.normal(0, 5, n)
+
+    df = pd.DataFrame({
+        "Temperature": temperature,
+        "Humidity": humidity,
+        "Vibration": vibration,
+        "Age": age,
+        "Signal Loss": signal_loss
+    })
+    return df
+
+# Step 2: Train model and get feature importances
+def analyze_data(df):
+    X = df[['Temperature', 'Humidity', 'Vibration', 'Age']]
+    y = df['Signal Loss']
+    model = RandomForestRegressor()
+    model.fit(X, y)
+
+    importances = model.feature_importances_
+    importance_df = pd.DataFrame({
+        "Feature": X.columns,
+        "Importance": importances
+    }).sort_values(by="Importance", ascending=False)
+    return importance_df
+
+def machine_health():
+    # Simulate machine health data
+    data = pd.DataFrame({
+        'MachineID': [f"M{i:02d}" for i in range(1, 11)],
+        'Temperature': np.random.normal(75, 10, 10),
+        'Vibration': np.random.normal(0.5, 0.1, 10),
+        'Uptime': np.random.uniform(100, 1000, 10)
+    })
+    data['Failure_Risk'] = np.random.choice([0, 1], size=10)
+
+    X = data[['Temperature', 'Vibration', 'Uptime']]
+    y = data['Failure_Risk']
+    model = RandomForestClassifier().fit(X, y)
+    data['Predicted Risk'] = model.predict(X)
+
+    table_html = data.to_html(classes='table table-striped', index=False)
+    return table_html
+
+def production_slowdown():
+    # Simulate production slowdown data
+    data = pd.DataFrame({
+        'Shift': np.random.choice([1, 2, 3], size=10),
+        'Temp': np.random.normal(25, 5, 10),
+        'Humidity': np.random.normal(50, 10, 10),
+    })
+    data['Actual_Rate'] = 100 - (data['Temp'] * 0.5 + data['Humidity'] * 0.2 + data['Shift'] * 2) + np.random.normal(0, 5, 10)
+
+    X = data[['Shift', 'Temp', 'Humidity']]
+    y = data['Actual_Rate']
+    model = LinearRegression().fit(X, y)
+    data['Predicted_Rate'] = model.predict(X)
+
+    table_html = data.to_html(classes='table table-striped', index=False)
+    return table_html
+
+def sensor_anomaly():
+    # Simulate sensor readings with anomalies
+    data = pd.DataFrame({
+        'Sensor_1': np.random.normal(100, 5, 20),
+        'Sensor_2': np.random.normal(200, 20, 20),
+        'Sensor_3': np.append(np.random.normal(300, 15, 18), [500, 510])
+    })
+    sensor_data = data.copy()  # keep raw sensor readings
+
+    model = IsolationForest(contamination=0.1).fit(sensor_data)
+    data['Anomaly Score'] = model.decision_function(sensor_data)
+    data['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'})
+
+    table_html = data.to_html(classes='table table-striped', index=False)
+    return table_html
+
 app = Flask(__name__)
 
 @app.route("/")
 def homepage():
-    return render_template('home.html')
+    sensor = sensor_anomaly()
+    production = production_slowdown()
+    machine = machine_health()
+    return render_template('home.html', sensor_anomaly_table=sensor, 
+                        production_slowdown_table=production,
+                        machine_health_table=machine)
+  
 
 @app.route("/productionRates")
 def productionRates():
@@ -41,7 +134,10 @@ def motorSpeed():
 
 @app.route("/senser")
 def senser():
-    return render_template('senser.html')
+    df = generate_sensor_data()
+    importance_df = analyze_data(df)
+    table_html = importance_df.to_html(classes="table table-striped", index=False)
+    return render_template('senser.html', table=table_html)
 
 @app.route("/opcua/motors")
 def motor():
