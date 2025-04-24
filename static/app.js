@@ -1,5 +1,7 @@
 const ALERT_THRESHOLD = 40;
+const ALERT_HightTempreature = 80;
 const ctx = document.getElementById('myChart').getContext('2d');
+
 const myChart = new Chart(ctx, {
     type: 'line',
     data: {
@@ -31,6 +33,7 @@ const myChart = new Chart(ctx, {
     }
 });
 
+
 function updateChart() {
     fetch('/opcua/products')
         .then(response => response.json())
@@ -43,17 +46,29 @@ function updateChart() {
             myChart.update();
         });
 }
-updateChart()
-setInterval(updateChart, 5000);
 
-$(document).ready(function(){
-    $('#login-trigger').click(function(){
-      $(this).next('#login-content').slideToggle();
-      $(this).toggleClass('active');
+function updateSendersChart() {
+    fetch('/opcua/sensors')
+        .then(response => response.json())
+        .then(data => {
+            myChart.data.labels = data.labels;
+            myChart.data.datasets = data.data;
 
-      if ($(this).hasClass('active')) $(this).find('span').html('&#x25B2;')
+            const pointColors = data.data.map(temp => temp > ALERT_HightTempreature ? 'red' : 'blue');
+            myChart.data.datasets[0].pointBackgroundColor = pointColors;
+            myChart.options.scales.y.beginAtZero = true;
+            myChart.update();
+        });
+}
+
+$(document).ready(function () {
+    $('#login-trigger').click(function () {
+        $(this).next('#login-content').slideToggle();
+        $(this).toggleClass('active');
+
+        if ($(this).hasClass('active')) $(this).find('span').html('&#x25B2;')
         else $(this).find('span').html('&#x25BC;')
-      })
-  });
+    })
+});
 
 document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));

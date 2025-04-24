@@ -15,7 +15,23 @@ def run():
 
    # Create Products folder
     products_folder = objects.add_folder(f"ns={idx};s=Products", "Products")
+    # Create Senser folder
+    sensers_folder = objects.add_folder(f"ns={idx};s=Sensors", "Sensors")
+    # Create Motor folder
+    motor_folder = objects.add_folder(f"ns={idx};s=Motors", "Motors")
 
+    # Craate Motor object
+    mortor = motor_folder.add_object(f"ns={idx};s=Motor", "Motor")
+    motor_speed = mortor.add_variable(idx, "MotorSpeeds", [5000])
+    motor_speed.set_writable()
+
+    # Craate Senser object
+    for i in range(1, 3):
+        sensor = sensers_folder.add_object(f"ns={idx};s=Sensor{i}", f"Sensor{i}")
+        sensor_temperature = sensor.add_variable(idx, "Temperatures", [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        sensor_temperature.set_writable()
+     
+    # Craate Production Rates object
     path = os.path.join("static", "data", "MOCK_DATA.json")
     with open(path, "r") as f:
         data = json.load(f)

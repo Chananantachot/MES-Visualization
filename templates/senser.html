@@ -1,11 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
-<h1>Visualization of MES Production Rate Simulation</h1>
+<h1>Visualization of MES Sensers tempreture (F) Simulation</h1>
 <canvas id="myChart"></canvas>
+
 {% endblock %}
 {% block scripts %}
 <script>
-  updateChart()
-  setInterval(updateChart, 5000);
+    updateSendersChart()
 </script>
 {% endblock %}
