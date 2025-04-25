@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
 import matplotlib
+import streamlit as st
 from opcua import Client
 import numpy as np
 import pandas as pd
@@ -70,27 +71,88 @@ def machine_health():
     X = data[['Temperature', 'Vibration', 'Uptime']]
     y = data['Failure_Risk']
     model = RandomForestClassifier().fit(X, y)
-    data['Predicted Risk'] = model.predict(X)
+ 
+    data['Risk_Probability'] = (model.predict_proba(X)[:, 1] * 100).round(2)
+    data['Risk_Probability'] = data['Risk_Probability'].astype(str) + '%'
+    data['Risk_Probability'] = data['Risk_Probability'].replace('0.0%', '0%')
+    data['Risk_Probability'] = data['Risk_Probability'].replace('100.0%', '100%')
+    data['Risk_Probability'] = data['Risk_Probability'].replace('nan', '0%')
+    data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
+    data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
-    table_html = data.to_html(classes='table table-striped', index=False)
+
+    table_html = data.to_html(classes='table table-sm', index=False)
     return table_html
 
 def production_slowdown():
-    # Simulate production slowdown data
+    # 1) Simulate data
     data = pd.DataFrame({
         'Shift': np.random.choice([1, 2, 3], size=10),
         'Temp': np.random.normal(25, 5, 10),
         'Humidity': np.random.normal(50, 10, 10),
     })
-    data['Actual_Rate'] = 100 - (data['Temp'] * 0.5 + data['Humidity'] * 0.2 + data['Shift'] * 2) + np.random.normal(0, 5, 10)
+    data['Actual_Rate'] = (
+        100
+        - (data['Temp'] * 0.5 + data['Humidity'] * 0.2 + data['Shift'] * 2)
+        + np.random.normal(0, 5, 10)
+    )
 
+    # 2) Fit model & get raw impacts
     X = data[['Shift', 'Temp', 'Humidity']]
     y = data['Actual_Rate']
     model = LinearRegression().fit(X, y)
     data['Predicted_Rate'] = model.predict(X)
 
-    table_html = data.to_html(classes='table table-striped', index=False)
-    return table_html
+    coefs = model.coef_
+    intercept = model.intercept_
+    data['Shift_Impact']    = data['Shift']    * coefs[0]
+    data['Temp_Impact']     = data['Temp']     * coefs[1]
+    data['Humidity_Impact'] = data['Humidity'] * coefs[2]  
+    data['Intercept'] = intercept
+
+    # 3) Turn each impact into Low/Medium/High
+    def categorize(v):
+        if -1 <= v <= 1:
+            return 'Low'
+        elif -3 <= v < -1 or 1 < v <= 3:
+            return 'Medium'
+        else:
+            return 'High'
+
+    for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
+        data[f'{feat}_Cat'] = data[feat].apply(categorize)
+        del data[feat]
+        data[feat.replace("_", " ")] = data.pop(f'{feat}_Cat')
+       
+    # 5) Summary counts
+    summary = {
+        feat: data[f'{feat}'].value_counts().to_dict()
+        for feat in ('Shift Impact', 'Temp Impact', 'Humidity Impact')
+    }
+
+    # 6) Inline‐style mapping for categories
+    def style_cat(cell_value):
+        if cell_value == 'High':
+            return 'background-color: lightcoral;'
+        elif cell_value == 'Medium':
+            return 'background-color: yellow;'
+        else:  # Low
+            return 'background-color: lightgreen;'
+
+    # 7) Build Styler and output HTML
+    styler = (
+        data.style
+            .applymap(style_cat, subset=[
+                'Shift Impact',
+                'Temp Impact',
+                'Humidity Impact'
+            ])
+            .set_table_attributes('class="table table-small"')
+            .format(precision=2)
+    )
+    del data['Shift']
+    table_html = styler.to_html()
+    return table_html, summary
 
 def sensor_anomaly():
     # Simulate sensor readings with anomalies
@@ -105,18 +167,37 @@ def sensor_anomaly():
     data['Anomaly Score'] = model.decision_function(sensor_data)
     data['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'})
 
-    table_html = data.to_html(classes='table table-striped', index=False)
+    table_html = data.to_html(classes='table table-sm', index=False)
     return table_html
+
+def impact_to_category(value):
+    if -1 <= value <= 1:
+        return 'Low'
+    elif -3 <= value < -1 or 1 < value <= 3:
+        return 'Medium'
+    else:
+        return 'High'
+
+
 
 app = Flask(__name__)
 
 @app.route("/")
 def homepage():
     sensor = sensor_anomaly()
-    production = production_slowdown()
+    #production = production_slowdown()
+    # Generate table HTML and summary
+    table_html, summary_row = production_slowdown()
+
+    # Display HTML table with color coding
+    st.markdown(table_html, unsafe_allow_html=True)
+
+    # Optionally, show the summary row for quick insights
+    #st.write(summary_row)
     machine = machine_health()
     return render_template('home.html', sensor_anomaly_table=sensor, 
-                        production_slowdown_table=production,
+                        production_slowdown_table=table_html,
+                        production_slowdown_summary=summary_row,
                         machine_health_table=machine)
   
 

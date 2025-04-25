@@ -25,6 +25,7 @@ body {
 a {
   text-decoration: none;
   color: #262626;
+  outline: none;
 }
 p {
   font-size: 1.3;
@@ -67,79 +68,6 @@ canvas {
   padding: 10px;
 }
 
-nav #login-content {
-  display: none;
-  position: absolute;
-  /* right: 260px;  */
-  z-index: 999;
-  background: #fff;
-  background-image: linear-gradient(top, #fff, #f4f4f4);
-  padding: 15px;
-  /* box-shadow: 0 2px 2px -1px rgba(0,0,0,.9); */
-  border-radius: 5px;
-}
-
-nav #login-trigger {
-  border-radius: 3px 0 0 3px;
-}
-
-#inputs input {
-  background: #f1f1f1;
-  padding: 6px 5px;
-  margin: 0 0 5px 0;
-  width: 238px;
-  border: 0px solid #ccc;
-  border-radius: 3px;
-  box-shadow: 0 1px 1px #ccc inset;
-}
-
-#inputs input:focus {
-  background-color: #fff;
-  border-color: #e8c291;
-  outline: none;
-  box-shadow: 0 0 0 1px #e8c291 inset;
-}
-
-#login #actions {
-  margin: 10px 0 0 0;
-}
-
-#login #submit {
-  border-radius: 3px;
-  float: left;
-  height: 30px;
-  padding: 0;
-  width: 100px;
-  cursor: pointer;
-  font: 13px Arial, Helvetica;
-}
-
-nav li #login-content {
-  width: 270px;
-}
-
-
-#login #submit:active {
-  outline: none;
-}
-
-
-#login label {
-  float: right;
-  line-height: 30px;
-}
-
-#login label input {
-  position: relative;
-  top: 2px;
-  right: 2px;
-}
-
-nav #login {
-  border-right: 1px solid #ddd;
-  box-shadow: 1px 0 0 #fff;
-}
-
 /* Nav */
 .main-nav {
   display: flex;
@@ -148,6 +76,7 @@ nav #login {
   height: 60px;
   padding: 20px 0;
   font-size: 13px;
+
 }
 
 .main-nav .logo {
@@ -161,6 +90,7 @@ nav #login {
 .main-nav ul.main-menu {
   flex: 1;
   margin-left: 20px;
+  
 }
 
 .main-nav ul li {
@@ -178,8 +108,8 @@ nav #login {
 .menu-btn {
   cursor: pointer;
   position: absolute;
-  top: 50px;
-  right: 60px;
+  top: 18px;
+  right: 0px;
   z-index: 2;
   display: none;
 }

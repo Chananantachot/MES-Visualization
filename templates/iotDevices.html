@@ -1,4 +1,7 @@
 {% extends "layout.html" %}
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+{% endblock %}
 {% block content %}
 <h1>Visualization of MES IoT Devices Simulation</h1>
 <center>
@@ -11,3 +14,131 @@
 
 </script>
 {% endblock %}
+
+<!-- 
+from flask import Flask, render_template, jsonify
+import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+
+# Flask application
+app = Flask(__name__)
+
+# Generate the dataset
+data = pd.DataFrame({
+    'MachineID': [f"M{i:02d}" for i in range(1, 11)],
+    'Temperature': np.random.normal(75, 10, 10),
+    'Vibration': np.random.normal(0.5, 0.1, 10),
+    'Uptime': np.random.uniform(100, 1000, 10)
+})
+data['Failure_Risk'] = np.random.choice([0, 1], size=10)
+
+# Train the model
+X = data[['Temperature', 'Vibration', 'Uptime']]
+y = data['Failure_Risk']
+model = RandomForestClassifier().fit(X, y)
+data['Predicted Risk'] = model.predict(X)
+
+# Route to send data in JSON format
+@app.route('/get-data')
+def get_data():
+    return jsonify(data.to_dict(orient='records'))
+
+# Main route
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+ <!-- Canvas for charts -->
+ <!-- <canvas id="temperatureChart" width="400" height="200"></canvas>
+ <canvas id="riskChart" width="400" height="200"></canvas>
+
+ <script>
+     // Fetch data from Flask
+     async function fetchData() {
+         const response = await fetch('/get-data');
+         return response.json();
+     }
+
+     // Render the Temperature chart
+     async function renderTemperatureChart() {
+         const data = await fetchData();
+
+         // Extract Machine IDs and Temperature
+         const labels = data.map(d => d.MachineID);
+         const temperatures = data.map(d => d.Temperature);
+
+         const ctx = document.getElementById('temperatureChart').getContext('2d');
+         new Chart(ctx, {
+             type: 'bar',
+             data: {
+                 labels: labels,
+                 datasets: [{
+                     label: 'Temperature (°F)',
+                     data: temperatures,
+                     backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                     borderColor: 'rgba(255, 99, 132, 1)',
+                     borderWidth: 1
+                 }]
+             },
+             options: {
+                 responsive: true,
+                 plugins: {
+                     legend: { display: true, position: 'top' }
+                 },
+                 scales: {
+                     y: { beginAtZero: true }
+                 }
+             }
+         });
+     }
+
+     // Render the Failure Risk chart
+     async function renderRiskChart() {
+         const data = await fetchData();
+
+         // Extract Machine IDs and Predicted Risk
+         const labels = data.map(d => d.MachineID);
+         const risks = data.map(d => d["Predicted Risk"]);
+
+         const ctx = document.getElementById('riskChart').getContext('2d');
+         new Chart(ctx, {
+             type: 'pie',
+             data: {
+                 labels: labels,
+                 datasets: [{
+                     label: 'Predicted Risk',
+                     data: risks,
+                     backgroundColor: [
+                         'rgba(54, 162, 235, 0.5)',
+                         'rgba(255, 206, 86, 0.5)',
+                         'rgba(75, 192, 192, 0.5)'
+                     ],
+                     borderColor: [
+                         'rgba(54, 162, 235, 1)',
+                         'rgba(255, 206, 86, 1)',
+                         'rgba(75, 192, 192, 1)'
+                     ],
+                     borderWidth: 1
+                 }]
+             },
+             options: {
+                 responsive: true,
+                 plugins: {
+                     legend: { display: true, position: 'top' }
+                 }
+             }
+         });
+     }
+
+     // Render the charts
+     renderTemperatureChart();
+     renderRiskChart();
+ </script> -->
+
+-->
+
+
