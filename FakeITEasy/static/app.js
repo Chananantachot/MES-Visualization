@@ -1,0 +1,85 @@
+const ALERT_THRESHOLD = 40;
+const ALERT_HightTempreature = 80;
+var myChart = null
+function InitializeChart() {
+
+    if (myChart) {
+        myChart.destroy();
+    }
+    const ctx = document.getElementById('myChart').getContext('2d');
+    myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Product Rates',
+                data: [],
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                pointBackgroundColor: 'blue',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            scales: {
+                x: {
+                    ticks: {
+                        autoSkip: false,
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                },
+                y: {
+                    beginAtZero: false
+                }
+            }
+        }
+    });
+
+    return myChart;
+}
+
+async function fetchData(url) {
+    const response = await fetch(url);
+    const data = await response.json();
+    return data;
+}
+
+async function updateChart() {
+    var data = await fetchData('/opcua/products');
+    var _myChart = InitializeChart();
+    _myChart.data.labels = data.labels;
+    _myChart.data.datasets[0].data = data.data;
+
+    var pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
+    _myChart.data.datasets[0].pointBackgroundColor = pointColors;
+    _myChart.update();
+   
+    
+}
+
+async function updateSendersChart() {
+    var data = await fetchData('/opcua/sensors');
+    var myChart = InitializeChart();
+    myChart.data.labels = data.labels;
+    myChart.data.datasets = data.data;
+
+    var pointColors = data.data.map(temp => temp > ALERT_HightTempreature ? 'red' : 'blue');
+    myChart.data.datasets[0].pointBackgroundColor = pointColors;
+    myChart.options.scales.y.beginAtZero = true;
+    myChart.update();
+}
+
+$(document).ready(function () {
+    $('#login-trigger').click(function () {
+        $(this).next('#login-content').slideToggle();
+        $(this).toggleClass('active');
+
+        if ($(this).hasClass('active')) $(this).find('span').html('&#x25B2;')
+        else $(this).find('span').html('&#x25BC;')
+    })
+});
+
+document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));

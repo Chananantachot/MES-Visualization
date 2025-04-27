@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.0.0
+MinimumVisualStudioVersion = 17.8.0.0
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEsay.AppHost", "FakeItEsay.AppHost\FakeItEsay.AppHost.csproj", "{73A689B6-B7DA-4940-A2D9-120F719EF2AD}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEsay.ServiceDefaults", "FakeItEsay.ServiceDefaults\FakeItEsay.ServiceDefaults.csproj", "{5FCA8B79-4352-4A1C-84E5-4591565BA500}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{73A689B6-B7DA-4940-A2D9-120F719EF2AD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73A689B6-B7DA-4940-A2D9-120F719EF2AD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73A689B6-B7DA-4940-A2D9-120F719EF2AD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73A689B6-B7DA-4940-A2D9-120F719EF2AD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FCA8B79-4352-4A1C-84E5-4591565BA500}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FCA8B79-4352-4A1C-84E5-4591565BA500}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FCA8B79-4352-4A1C-84E5-4591565BA500}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FCA8B79-4352-4A1C-84E5-4591565BA500}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {90FA5201-A343-4ABE-962D-10F78D2DA7F4}
+	EndGlobalSection
+EndGlobal
