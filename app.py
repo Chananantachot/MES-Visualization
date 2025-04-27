@@ -411,4 +411,4 @@ def generate_time_list(start_time_str, interval_minutes=15):
 
 
 if __name__ == '__main__':
-   app.run(debug=True, threaded=False)
+   app.run(debug=True, threaded=False, host='0.0.0.0', port=5001)

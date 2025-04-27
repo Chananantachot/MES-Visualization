@@ -1,9 +1,13 @@
 const ALERT_THRESHOLD = 40;
 const ALERT_HightTempreature = 80;
-
+var myChart = null
 function InitializeChart() {
+
+    if (myChart) {
+        myChart.destroy();
+    }
     const ctx = document.getElementById('myChart').getContext('2d');
-    const myChart = new Chart(ctx, {
+    myChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: [],
@@ -45,13 +49,15 @@ async function fetchData(url) {
 
 async function updateChart() {
     var data = await fetchData('/opcua/products');
-    var myChart = InitializeChart();
-    myChart.data.labels = data.labels;
-    myChart.data.datasets[0].data = data.data;
+    var _myChart = InitializeChart();
+    _myChart.data.labels = data.labels;
+    _myChart.data.datasets[0].data = data.data;
 
     var pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
-    myChart.data.datasets[0].pointBackgroundColor = pointColors;
-    myChart.update();
+    _myChart.data.datasets[0].pointBackgroundColor = pointColors;
+    _myChart.update();
+   
+    
 }
 
 async function updateSendersChart() {
