@@ -8,7 +8,7 @@ var fakeItEasy = builder.AddPythonApp("FakeITEasy", "../../src", "app.py")
    // .WithExternalHttpEndpoints()
     //.WithOtlpExporter()
 
-var opcua = builder.AddExecutable("OPCUA", "python3", "../../FakeITEasy", ["server.py"]);
+var opcua = builder.AddExecutable("OPCUA", "python3", "../../src", ["server.py"]);
    
 #pragma warning restore ASPIREHOSTINGPYTHON001
 
