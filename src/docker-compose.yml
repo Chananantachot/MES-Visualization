@@ -1,0 +1,12 @@
+version: '3.8'  # specify the version of Docker Compose (3.8 is the latest stable version)
+
+services:
+  src:
+    build:
+      context: .  # Build the Docker image from the current directory
+      dockerfile: ./Dockerfile  # Make sure your Dockerfile is named correctly
+    ports:
+      - "5001:5001"  # Expose Flask's port (5001) to the host
+      - "4840:4840"  # Expose OPC UA's port (4840) to the host
+    # Add a restart policy in case the container stops unexpectedly
+    restart: always 
