@@ -1,4 +1,4 @@
-from flask import Flask, url_for ,render_template
+from flask import Flask, url_for ,render_template,jsonify
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.ensemble import RandomForestRegressor
@@ -351,15 +351,13 @@ def products():
             rate_node = product.get_child([f"{idx}:ProductRate"]) 
             rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
             data.append((rate_value))
-       
     finally:
         client.disconnect()
 
-    dataset = json.dumps({
+    dataset = jsonify({
         'labels': labels,
         'data': data
     })
-
     return dataset
 
 @app.route("/opcua/sensors")
