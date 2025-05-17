@@ -72,7 +72,7 @@ def machine_health():
     y = data['Failure_Risk']
     model = RandomForestClassifier().fit(X, y)
  
-    data['Risk_Probability'] = (model.predict_proba(X)[:, 1] * 100).round(2)
+    data['Risk_Probability'] = (model.predict_proba(X)[:, 0] * 100).round(2)
     data['Risk_Probability'] = data['Risk_Probability'].astype(str) + '%'
     data['Risk_Probability'] = data['Risk_Probability'].replace('0.0%', '0%')
     data['Risk_Probability'] = data['Risk_Probability'].replace('100.0%', '100%')
@@ -80,9 +80,10 @@ def machine_health():
     data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
     data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
-
+    machine_data = data.to_dict()
     table_html = data.to_html(classes='table table-sm', index=False)
-    return table_html
+    
+    return table_html, machine_data
 
 def production_slowdown():
     # 1) Simulate data
@@ -168,7 +169,9 @@ def sensor_anomaly():
     data['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'})
 
     table_html = data.to_html(classes='table table-sm', index=False)
-    return table_html
+    # Build summary
+    sensor_summary = data.to_dict()
+    return table_html, sensor_summary
 
 def impact_to_category(value):
     if -1 <= value <= 1:
@@ -178,13 +181,13 @@ def impact_to_category(value):
     else:
         return 'High'
 
-
-
 app = Flask(__name__)
 
 @app.route("/")
 def homepage():
-    sensor = sensor_anomaly()
+    sensor_html, sensor_summary = sensor_anomaly()
+    
+    st.markdown(sensor_html, unsafe_allow_html=True)
     #production = production_slowdown()
     # Generate table HTML and summary
     table_html, summary_row = production_slowdown()
@@ -194,11 +197,14 @@ def homepage():
 
     # Optionally, show the summary row for quick insights
     #st.write(summary_row)
-    machine = machine_health()
-    return render_template('home.html', sensor_anomaly_table=sensor, 
+    machine_html, machine_data = machine_health()
+    return render_template('home.html', 
+                        sensor_anomaly_table=sensor_html, 
+                        sensor_summary = sensor_summary,
                         production_slowdown_table=table_html,
                         production_slowdown_summary=summary_row,
-                        machine_health_table=machine)
+                        machine_health_table=machine_html,
+                        machine_data = machine_data)
   
 
 @app.route("/productionRates")
