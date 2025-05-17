@@ -15,6 +15,6 @@ def step_given_app_running(context):
 def step_when_request_ping(context):
     context.response = context.client.get("/")
 
-@then('I should receive "{expected}"')
-def step_then_receive_pong(context,expected):
-    assert expected in context.response.get_data(as_text=True)
+@then('I should receive "Welcome to Manufacturing Execution System (MES) Simulation"')
+def step_then_receive_pong(context):
+    assert "Welcome to Manufacturing Execution System (MES) Simulation" in context.response.get_data(as_text=True)

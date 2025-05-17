@@ -17,3 +17,13 @@ def step_then_receive_pong(context):
     assert "labels" in data
     assert "data" in data
     assert len(data["data"]) > 0
+
+@when('I request the "/productionRates" endpoint')
+def step_when_request_ping(context):
+    context.response = context.client.get("/productionRates")
+
+@then('I should receive "Visualization of MES Production Rate Simulation"')
+def step_then_receive_pong(context):
+    assert "Visualization of MES Production Rate Simulation" in context.response.get_data(as_text=True)
+    assert "<canvas" in context.response.get_data(as_text=True)
+    assert "</canvas>" in context.response.get_data(as_text=True) 

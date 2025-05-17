@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import datetime
 import json
 import random
-
+import os
 matplotlib.use('Agg')
 
 # Generate random temperature and motor speed data
@@ -282,6 +282,8 @@ def motorSpeedWithAI():
     model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
     r2 = r2_score(y, predicted_speed)
     r2_text = f"Model Accuracy (R²): {r2:.3f}"
+
+    os.makedirs("static", exist_ok=True)
 
     # Step 4: Plot the result
     plt.scatter(temperature, motor_speed, label='Actual Data', color='blue')
