@@ -12,7 +12,7 @@ def step_when_request_ping(context):
 @then('I should receive "Motor Speed vs Temperature (AI Analysis)"')
 def step_then_receive_pong(context):
     assert "Motor Speed vs Temperature (AI Analysis)" in context.response.get_data(as_text=True)
-    assert "<img" in context.response.get_data(as_text=True)
+    assert "<canvas" in context.response.get_data(as_text=True)
     assert "AI Model Insights" in context.response.get_data(as_text=True)
     assert "<table" in context.response.get_data(as_text=True)
     assert "</table>" in context.response.get_data(as_text=True)     
