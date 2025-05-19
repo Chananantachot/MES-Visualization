@@ -16,3 +16,14 @@ def step_then_receive_pong(context):
     assert "AI Model Insights" in context.response.get_data(as_text=True)
     assert "<table" in context.response.get_data(as_text=True)
     assert "</table>" in context.response.get_data(as_text=True)     
+
+@when('I request the "/ai/motorSpeed" api endpoint')
+def step_when_request_ping(context):
+    context.response = context.client.get("/ai/motorSpeed", headers={"Accept": "application/json"})
+
+@then('I should receive json data back')
+def step_then_receive_pong(context):
+    assert context.response.status_code == 200
+    assert "labels" in context.response.json
+    assert "datasets" in context.response.json
+    assert len(context.response.json["datasets"]) > 0
