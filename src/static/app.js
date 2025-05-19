@@ -42,7 +42,11 @@ function InitializeChart() {
 }
 
 async function fetchData(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
     const data = await response.json();
     return data;
 }
@@ -59,7 +63,7 @@ async function updateChart() {
 }
 
 async function updateMotorSpeedChart() {
-    var data = await fetchData("/opcua/motorSpeed");
+    var data = await fetchData("/ai/motorSpeed");
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets= data.datasets;

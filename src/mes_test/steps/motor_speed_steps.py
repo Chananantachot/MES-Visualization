@@ -7,7 +7,7 @@ def step_given_app_running(context):
 
 @when('I request the "/ai/motorSpeed" endpoint')
 def step_when_request_ping(context):
-    context.response = context.client.get("/ai/motorSpeed")
+    context.response = context.client.get("/ai/motorSpeed", headers={"Accept": "text/html"})
 
 @then('I should receive "Motor Speed vs Temperature (AI Analysis)"')
 def step_then_receive_pong(context):

@@ -1,4 +1,4 @@
-from flask import Flask, url_for ,render_template,jsonify
+from flask import Flask, url_for ,render_template,jsonify,request
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.ensemble import RandomForestRegressor
@@ -267,42 +267,58 @@ def motor():
 
 @app.route("/ai/motorSpeed")
 def motorSpeedWithAI():
-    temperature = motor_speed = []
+    _temperature = _motor_speed = []
     client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:
         client.connect()
         idx = 2
-        motor_folder = client.get_node(f"ns={idx};s=Motor") 
-        motors = motor_folder.get_children()
-        for motor in motors:
-            temperature = motor.get_child([f"{idx}:temperature"]).get_value() 
-            motor_speed = motor.get_child([f"{idx}:speed"]).get_value() 
+        motor = client.get_node(f"ns={idx};s=Motor")
+        _temperature = motor.get_child([f"{idx}:temperatures"]).get_value()
+        _motor_speed = motor.get_child([f"{idx}:speeds"]).get_value()
     finally:
         client.disconnect()
     
-    temp = np.linspace(20, 100, 50)
-    speed = 5000 - (temp * 30) + np.random.normal(0, 100, size=50)
-    X = temp.reshape(-1, 1)
-    y = speed    
+    _temperature = temperature
+    _motor_speed = 5000 - (_temperature * 30) + np.random.normal(0, 100, size=50)
+    X = _temperature.reshape(-1, 1)
+    y = _motor_speed    
+
     model = LinearRegression()
     model.fit(X, y)
 
-    # Step 3: Get predicted values
     predicted_speed = model.predict(X)
-    # Model insights
-    model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
-    r2 = r2_score(y, predicted_speed)
-    r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
-    # Step 5: Create the updated table
-    data_table = pd.DataFrame({
-        'Temperature (°C)': temp,
-        'Actual Speed (RPM)': speed,
-        'Predicted Speed (RPM)': predicted_speed
-    })
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        data = jsonify({
+            'labels' : _temperature.tolist(),
+            'datasets' : [
+                {
+                    'label': 'Actual Data',
+                    'data' : _motor_speed.tolist(),
+                    'yAxisID': 'y'
+                },
+                {
+                    'label': 'Learned Trend Line',
+                    'data' : predicted_speed.tolist(),
+                    'yAxisID': 'y1'
+                }            
+            ]
+        })
+        return data
+    else:
+        model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
+        r2 = r2_score(y, predicted_speed)
+        r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
-    table_html = data_table.to_html(classes='table table-striped', index=False)
-    return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text)
+        # Step 5: Create the updated table
+        data_table = pd.DataFrame({
+            'Temperature (°C)': _temperature,
+            'Actual Speed (RPM)': _motor_speed,
+            'Predicted Speed (RPM)': predicted_speed
+        })
+
+        table_html = data_table.to_html(classes='table table-striped', index=False)
+        return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text)
 
 @app.route("/opcua/products")
 def products():
@@ -329,48 +345,6 @@ def products():
         'data': data
     })
     return dataset
-
-@app.route("/opcua/motorSpeed")
-def getMotorSpeed():
-    temperature = motor_speed = []
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        motor_folder = client.get_node(f"ns={idx};s=Motor") 
-        motors = motor_folder.get_children()
-        for motor in motors:
-            temperature = motor.get_child([f"{idx}:temperature"]).get_value() 
-            motor_speed = motor.get_child([f"{idx}:speed"]).get_value() 
-    finally:
-        client.disconnect()
- 
-    temperature = np.linspace(20, 100, 50)
-    motor_speed = 5000 - (temperature * 30) + np.random.normal(0, 100, size=50)
-    X = temperature.reshape(-1, 1)
-    y = motor_speed    
-
-    model = LinearRegression()
-    model.fit(X, y)
-
-    predicted_speed = model.predict(X)
-
-    data = jsonify({
-        'labels' : temperature.tolist(),
-        'datasets' : [
-            {
-                'label': 'Actual Data',
-                'data' : motor_speed.tolist(),
-                'yAxisID': 'y'
-            },
-            {
-                'label': 'Learned Trend Line',
-                'data' : predicted_speed.tolist(),
-                'yAxisID': 'y1'
-            }            
-        ]
-    })
-    return data
 
 @app.route("/opcua/sensors")
 def senserTemperature():
