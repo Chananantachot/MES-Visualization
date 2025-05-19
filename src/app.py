@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 import datetime
 import json
 import random
-import os
 matplotlib.use('Agg')
 
 # Generate random temperature and motor speed data
@@ -268,11 +267,23 @@ def motor():
 
 @app.route("/ai/motorSpeed")
 def motorSpeedWithAI():
-    # Step 1: Reshape your inputs (sklearn expects 2D array)
-    X = temperature.reshape(-1, 1)
-    y = motor_speed
-
-    # Step 2: Fit the model
+    temperature = motor_speed = []
+    client = Client("opc.tcp://0.0.0.0:4840/server/")
+    try:
+        client.connect()
+        idx = 2
+        motor_folder = client.get_node(f"ns={idx};s=Motor") 
+        motors = motor_folder.get_children()
+        for motor in motors:
+            temperature = motor.get_child([f"{idx}:temperature"]).get_value() 
+            motor_speed = motor.get_child([f"{idx}:speed"]).get_value() 
+    finally:
+        client.disconnect()
+    
+    temp = np.linspace(20, 100, 50)
+    speed = 5000 - (temp * 30) + np.random.normal(0, 100, size=50)
+    X = temp.reshape(-1, 1)
+    y = speed    
     model = LinearRegression()
     model.fit(X, y)
 
@@ -283,58 +294,15 @@ def motorSpeedWithAI():
     r2 = r2_score(y, predicted_speed)
     r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
-    os.makedirs("static", exist_ok=True)
-
-    # Step 4: Plot the result
-    plt.scatter(temperature, motor_speed, label='Actual Data', color='blue')
-    plt.plot(temperature, predicted_speed, label='Learned Trend Line', color='green')  # AI-based line
-    plt.xlabel('Temperature (°C)')
-    plt.ylabel('Motor Speed (RPM)')
-    plt.title('Motor Speed vs Temperature (AI Model)')
-    plt.legend()
-    plt.savefig("static/graph.png")
-    plt.close()
-
     # Step 5: Create the updated table
     data_table = pd.DataFrame({
-        'Temperature (°C)': temperature,
-        'Actual Speed (RPM)': motor_speed,
+        'Temperature (°C)': temp,
+        'Actual Speed (RPM)': speed,
         'Predicted Speed (RPM)': predicted_speed
     })
 
-     # Convert the table to HTML
     table_html = data_table.to_html(classes='table table-striped', index=False)
-    graph_url = url_for('static', filename='graph.png')
-    # Render the HTML template with the graph and table
-    return render_template("motorSpeed.html", table=table_html, graph_url=graph_url,
-                       model_eq=model_eq, r2_text=r2_text)
-
-
-# def motorSpeedWithAI():
-#     # Create and save the graph
-#     plt.scatter(temperature, motor_speed, label='Actual Data', color='blue')
-#     plt.plot(temperature, 5000 - temperature * 30, label='Predicted Line', color='red')  # Example trend line
-#     plt.xlabel('Temperature (°C)')
-#     plt.ylabel('Motor Speed (RPM)')
-#     plt.title('Motor Speed vs Temperature')
-#     plt.legend()
-#     plt.savefig("static/graph.png")  # Save graph to 'static' folder
-#     plt.close()
-
-#     # Create table with pandas
-#     predicted_speed = 5000 - (temperature * 30)  # Example predictions
-#     data_table = pd.DataFrame({
-#         'Temperature (°C)': temperature,
-#         'Actual Speed (RPM)': motor_speed,
-#         'Predicted Speed (RPM)': predicted_speed
-#     })
-
-#     # Convert the table to HTML
-#     table_html = data_table.to_html(classes='table table-striped', index=False)
-#     graph_url = url_for('static', filename='graph.png')
-#     # Render the HTML template with the graph and table
-#     return render_template("motorSpeed.html", table=table_html, graph_url=graph_url)
-
+    return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text)
 
 @app.route("/opcua/products")
 def products():
@@ -361,6 +329,48 @@ def products():
         'data': data
     })
     return dataset
+
+@app.route("/opcua/motorSpeed")
+def getMotorSpeed():
+    temperature = motor_speed = []
+    client = Client("opc.tcp://0.0.0.0:4840/server/")
+    try:
+        client.connect()
+        idx = 2
+        motor_folder = client.get_node(f"ns={idx};s=Motor") 
+        motors = motor_folder.get_children()
+        for motor in motors:
+            temperature = motor.get_child([f"{idx}:temperature"]).get_value() 
+            motor_speed = motor.get_child([f"{idx}:speed"]).get_value() 
+    finally:
+        client.disconnect()
+ 
+    temperature = np.linspace(20, 100, 50)
+    motor_speed = 5000 - (temperature * 30) + np.random.normal(0, 100, size=50)
+    X = temperature.reshape(-1, 1)
+    y = motor_speed    
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    predicted_speed = model.predict(X)
+
+    data = jsonify({
+        'labels' : temperature.tolist(),
+        'datasets' : [
+            {
+                'label': 'Actual Data',
+                'data' : motor_speed.tolist(),
+                'yAxisID': 'y'
+            },
+            {
+                'label': 'Learned Trend Line',
+                'data' : predicted_speed.tolist(),
+                'yAxisID': 'y1'
+            }            
+        ]
+    })
+    return data
 
 @app.route("/opcua/sensors")
 def senserTemperature():
@@ -417,4 +427,4 @@ def generate_time_list(start_time_str, interval_minutes=15):
 
 
 if __name__ == '__main__':
-   app.run(debug=True, threaded=False, host='0.0.0.0', port=5001)
+   app.run(debug=True, host='0.0.0.0', port=5000)

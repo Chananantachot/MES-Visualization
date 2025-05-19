@@ -12,7 +12,7 @@ function InitializeChart() {
         data: {
             labels: [],
             datasets: [{
-                label: 'Product Rates',
+                label: '',
                 data: [],
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 borderColor: 'rgba(75, 192, 192, 1)',
@@ -55,9 +55,15 @@ async function updateChart() {
 
     var pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
     _myChart.data.datasets[0].pointBackgroundColor = pointColors;
-    _myChart.update();
-   
-    
+    _myChart.update(); 
+}
+
+async function updateMotorSpeedChart() {
+    var data = await fetchData("/opcua/motorSpeed");
+    var _myChart = InitializeChart();
+    _myChart.data.labels = data.labels;
+    _myChart.data.datasets= data.datasets;
+    _myChart.update(); 
 }
 
 async function updateSendersChart() {

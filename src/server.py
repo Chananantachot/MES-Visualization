@@ -1,5 +1,6 @@
 import time
 from opcua import Server
+import numpy as np
 import json
 import os
 
@@ -22,7 +23,10 @@ motor_folder = objects.add_folder(f"ns={idx};s=Motors", "Motors")
 
 # Craate Motor object
 mortor = motor_folder.add_object(f"ns={idx};s=Motor", "Motor")
-motor_speed = mortor.add_variable(idx, "MotorSpeeds", [5000])
+temperature = np.linspace(20, 100, 50).tolist()
+motor_temperature = mortor.add_variable(idx, "temperature", temperature)
+motor_temperature.set_writable()
+motor_speed = mortor.add_variable(idx, "speed",5000 - (temperature * 30) + np.random.normal(0, 100, size=50).tolist())
 motor_speed.set_writable()
 
 # Craate Senser object

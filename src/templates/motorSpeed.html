@@ -4,9 +4,15 @@
 {% endblock %}
 {% block content %}
 <h1 class="mt-4">Motor Speed vs Temperature (AI Analysis)</h1>
-<img src="{{ graph_url }}" alt="Graph" class="img-fluid mb-4" />
+<canvas id="myChart"></canvas>
 <h4>AI Model Insights</h4>
 <p>{{ model_eq }}</p>
 <p>{{ r2_text }}</p>
 {{ table|safe }}
+{% endblock %}
+{% block scripts %}
+<script>
+  updateMotorSpeedChart()
+  setInterval(updateMotorSpeedChart, 5000);
+</script>
 {% endblock %}
