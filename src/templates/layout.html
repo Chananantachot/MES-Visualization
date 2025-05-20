@@ -18,33 +18,39 @@
     </div>
     <nav class="main-nav">
       <img src="https://avatars.githubusercontent.com/u/1713521?v=4" alt="XYZ" class="logo">
-
+      {%  if current_user %}
       <ul class="main-menu">
         <li><a href="{{ url_for('homepage') }}">Home</a></li>
         <li><a href="{{ url_for('productionRates') }}">Production Rates</a></li>
         <li><a href="{{ url_for('senser') }}">Senser Degradation Factors</a></li>
-        <!-- <li><a href="{{ url_for('motorSpeed') }}">Motor Spped</a></li> -->
         <li><a href="{{ url_for('motorSpeedWithAI') }}">Motor Spped Analysis</a></li>
         <li><a href="{{ url_for('iotDevices') }}">IoT Devices</a></li>
       </ul>
+      {% else %}
+      <ul class="main-menu">
+        <li><a href="#">Home</a></li>
+        <li><a href="#">Production Rates</a></li>
+        <li><a href="#">Senser Degradation Factors</a></li>
+        <li><a href="#">Motor Spped Analysis</a></li>
+        <li><a href="#">IoT Devices</a></li>
+      </ul>
+      {% endif %}
       <ul class="right-menu">
         <li>
-          <a class="dropdown-toggle" id="loginDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Login</a>
-          <div class="dropdown-menu dropdown-menu-end p-3" aria-labelledby="loginDropdown" style="min-width: 300px;">
-            <form>
-                <div class="mb-3">
-                    <label for="emailInput" class="form-label">Email address</label>
-                    <input type="email" class="form-control" id="emailInput" placeholder="Enter email">
-                </div>
-                <div class="mb-3">
-                    <label for="passwordInput" class="form-label">Password</label>
-                    <input type="password" class="form-control" id="passwordInput" placeholder="Enter password">
-                </div>
-                <button type="submit" class="btn btn-primary w-100">Login</button>
-            </form>
-        </div>
+          {%  if current_user %}
+            <i class="fa-solid fa-user"></i>
+            <span class="navbar-text">Hello, {{ current_user }}</span>
+          {% else %}
+            <a href="{{ url_for('login') }}">Login</a>
+          {% endif %}
         </li>
-        <li><a href="#">Register</a></li>
+        <li>
+          {%  if current_user %}
+            <a href="{{ url_for('logout') }}">Logout</a>
+           {% else %}
+            <a href="{{ url_for('newUser') }}">Register</a>
+           {% endif %}
+        </li>
       </ul>
     </nav>
   </div>

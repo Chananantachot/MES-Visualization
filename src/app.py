@@ -1,4 +1,10 @@
-from flask import Flask, url_for ,render_template,jsonify,request
+from flask import Flask, make_response, url_for ,render_template,jsonify,request,redirect
+from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity, unset_jwt_cookies
+from flask_jwt_extended.exceptions import NoAuthorizationError
+from jwt.exceptions import ExpiredSignatureError
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import g
+from datetime import datetime, timedelta
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from sklearn.ensemble import RandomForestRegressor
@@ -8,6 +14,7 @@ from sklearn.inspection import permutation_importance
 import matplotlib
 import matplotlib.colors as mcolors
 import streamlit as st
+import sqlite3
 from opcua import Client
 import numpy as np
 import pandas as pd
@@ -15,6 +22,7 @@ import matplotlib.pyplot as plt
 import datetime
 import json
 import random
+import uuid
 matplotlib.use('Agg')
 
 # Generate random temperature and motor speed data
@@ -181,22 +189,78 @@ def impact_to_category(value):
     else:
         return 'High'
 
+DATABASE = "auth.db"
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        db.row_factory = sqlite3.Row  # 👈 Add this line
+    return db
+
+def init_db():
+    db = get_db()
+    _cursor = db.cursor()
+    _cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            fullname TEXT NOT NULL,        
+            email TEXT NOT NULL,
+            password TEXT NOT NULL      
+        )
+    ''')
+    db.commit()
+
+def getCurrentUser(email):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(f'SELECT email From users Where email = "{email}"')
+    user = cursor.fetchone()
+
+    return user
+
+def registerNewUser(fullname,email,password):
+    db = get_db()
+    cursor = db.cursor()
+    userid = str(uuid.uuid4())
+    cursor.execute('INSERT INTO users (id,fullname,email,password) VALUES (?,?,?,?)', (userid,fullname,email,password,))
+    db.commit()
+    
+    return userid
+
 app = Flask(__name__)
+app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
+app.config["JWT_COOKIE_SECURE"] = False  # Set to False in development if not using HTTPS
+app.config['JWT_ACCESS_COOKIE_NAME'] = 'access_token_cookie' 
+app.config["JWT_SECRET_KEY"] = "$uper-secret!99"  # Change this in production
+app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
+jwt = JWTManager(app)
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+@app.before_request
+def before_request():
+    init_db()
+
+@app.errorhandler(NoAuthorizationError)
+def handle_missing_token(e):
+    return render_template('error.html', msg="You are not authorized to access this page."), 401
 
 @app.route("/")
-def homepage():
+@jwt_required()
+def homepage():  
+    current_user = get_jwt_identity() 
+
     sensor_html, sensor_summary = sensor_anomaly()
-    
     st.markdown(sensor_html, unsafe_allow_html=True)
-    #production = production_slowdown()
-    # Generate table HTML and summary
     table_html, summary_row = production_slowdown()
 
-    # Display HTML table with color coding
     st.markdown(table_html, unsafe_allow_html=True)
 
-    # Optionally, show the summary row for quick insights
-    #st.write(summary_row)
     machine_html, machine_data = machine_health()
     return render_template('home.html', 
                         sensor_anomaly_table=sensor_html, 
@@ -204,22 +268,28 @@ def homepage():
                         production_slowdown_table=table_html,
                         production_slowdown_summary=summary_row,
                         machine_health_table=machine_html,
-                        machine_data = machine_data)
+                        machine_data = machine_data, current_user = current_user)
   
-
 @app.route("/productionRates")
+@jwt_required()
 def productionRates():
-    return render_template('index.html')
+    current_user = get_jwt_identity() 
+    return render_template('index.html', current_user = current_user)
 
 @app.route("/iotDevices")
+@jwt_required()
 def iotDevices():
-   return render_template('iotDevices.html')
+    current_user = get_jwt_identity() 
+    return render_template('iotDevices.html', current_user = current_user)
 
 @app.route("/motor")
+@jwt_required()
 def motorSpeed():
-    return render_template('motor.html')
+    current_user = get_jwt_identity()   
+    return render_template('motor.html', current_user = current_user)
 
 @app.route("/senser")
+@jwt_required()
 def senser():
     table_html, sensors = sensor_anomaly()
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
@@ -254,7 +324,12 @@ def senser():
 
         return jsonify(datasets)
     else: 
-        return render_template('senser.html', table=table_html)
+        access_token = request.cookies.get('access_token_cookie')
+        if not access_token:
+            return render_template('error.html', msg= "You are not authorized to access this page.")    
+        
+        current_user = get_jwt_identity()   
+        return render_template('senser.html', table=table_html, current_user = current_user)
 
 @app.route("/opcua/motors")
 def motor():
@@ -297,6 +372,7 @@ def motor():
     return dataset
 
 @app.route("/ai/motorSpeed")
+@jwt_required()
 def motorSpeedWithAI():
     _temperature = _motor_speed = []
     client = Client("opc.tcp://0.0.0.0:4840/server/")
@@ -337,6 +413,7 @@ def motorSpeedWithAI():
         })
         return data
     else:
+        current_user = get_jwt_identity()  
         model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
         r2 = r2_score(y, predicted_speed)
         r2_text = f"Model Accuracy (R²): {r2:.3f}"
@@ -349,7 +426,7 @@ def motorSpeedWithAI():
         })
 
         table_html = data_table.to_html(classes='table table-striped', index=False)
-        return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text)
+        return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text, current_user = current_user)
 
 @app.route("/opcua/products")
 def products():
@@ -412,6 +489,53 @@ def senserTemperature():
 
     return dataset
 
+@app.route('/signin', methods=['GET'])
+def login():
+    error = request.args.get('error')
+    return render_template('login.html', error = error)
+
+@app.route('/logout', methods=['POST', 'GET'])
+def logout():
+    response = make_response(redirect(url_for('login'))) # or render_template(...)
+    unset_jwt_cookies(response)
+    return response
+
+@app.route('/signin', methods=['POST'])
+def signin():
+    email = request.form['email']
+    password = request.form['password']
+
+    user = getCurrentUser(email)
+    if not user and not check_password_hash(user['password'], password):
+        return redirect(url_for("login", error="Invalid username or password!"))
+    
+    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+    access_token = create_access_token(identity=user['email'], expires_delta=timedelta(minutes=30))
+   
+    response = make_response(redirect(url_for("homepage")))
+    response.set_cookie('access_token_cookie', access_token,expires=expiration_time, httponly=True, secure=False, samesite='Strict')
+    return response
+
+@app.route('/register', methods=['GET'])
+def newUser():
+    email = request.args.get('email')
+    return render_template('register.html', existedUser = email)
+
+@app.route('/register', methods=['POST'])
+def register():
+    fullname = request.form['fullname']
+    email = request.form['email']
+    password = request.form['password']
+    hashed_password = generate_password_hash(password)
+
+    user = getCurrentUser(email)
+    newUserID = None
+    if not user:
+      newUserID = registerNewUser(fullname,email,hashed_password)
+    else:
+        return redirect(url_for('newUser', email=email))   
+
+    return redirect(url_for('login'))
 
 def generate_time_list(start_time_str, interval_minutes=15):
     """Generates a list of time strings for 8 hours, with a given interval.
@@ -429,7 +553,6 @@ def generate_time_list(start_time_str, interval_minutes=15):
         current_time = start_time + datetime.timedelta(minutes=i * interval_minutes)
         time_list.append(current_time.strftime("%H:%M"))
     return time_list
-
 
 if __name__ == '__main__':
    app.run(debug=True, host='0.0.0.0', port=5000)
