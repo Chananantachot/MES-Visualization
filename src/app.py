@@ -6,6 +6,7 @@ from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.model_selection import train_test_split
 from sklearn.inspection import permutation_importance
 import matplotlib
+import matplotlib.colors as mcolors
 import streamlit as st
 from opcua import Client
 import numpy as np
@@ -220,10 +221,40 @@ def motorSpeed():
 
 @app.route("/senser")
 def senser():
-    df = generate_sensor_data()
-    importance_df = analyze_data(df)
-    table_html = importance_df.to_html(classes="table table-striped", index=False)
-    return render_template('senser.html', table=table_html)
+    table_html, sensors = sensor_anomaly()
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        datasets = []
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:
+            client.connect()
+            idx = 2
+            sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
+            sensor_nodes = sensors_folder.get_children()
+            values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
+            for j, senser in enumerate(sensor_nodes):
+                senser_node = senser.get_child([f"{idx}:Signal"]) 
+                signals = senser_node.get_value()
+                data = []
+                for i, value in enumerate(signals):
+                        value += values[j] * 10
+                        s = { 'x': i, 'y': value }
+                        data.append(s) 
+
+                colors = ['brown', 'pink', 'red']
+                datasets.append({
+                    'label': f'Senser {j+1}',
+                    'borderColor': mcolors.CSS4_COLORS[colors[j]],
+                    'borderWidth': 1,
+                    'radius': 0,
+                    'data': data
+                }) 
+                
+        finally:
+            client.disconnect()
+
+        return jsonify(datasets)
+    else: 
+        return render_template('senser.html', table=table_html)
 
 @app.route("/opcua/motors")
 def motor():

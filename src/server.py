@@ -1,6 +1,7 @@
 import time
 from opcua import Server
 import numpy as np
+import random
 import json
 import os
 
@@ -33,10 +34,17 @@ motor_speed = mortor.add_variable(idx, "speeds", temp.tolist() + np.random.norma
 motor_speed.set_writable()
 
 # Craate Senser object
-for i in range(1, 3):
+for i in range(1, 4):
     sensor = sensers_folder.add_object(f"ns={idx};s=Sensor{i}", f"Sensor{i}")
     sensor_temperature = sensor.add_variable(idx, "Temperatures", [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     sensor_temperature.set_writable()
+    if i == 1:
+        sensor_signal = sensor.add_variable(idx, "Signal",  np.append(np.random.normal(600,  random.uniform(20, 50), 980), [200, 300]).tolist())
+    elif i == 2:
+        sensor_signal = sensor.add_variable(idx, "Signal",  np.append(np.random.normal(400, random.uniform(5, 50), 980), [100, 600]).tolist())
+    else:
+        sensor_signal = sensor.add_variable(idx, "Signal",  np.append(np.random.normal(200, random.uniform(10, 50), 980), [200, 800]).tolist())        
+    sensor_signal.set_writable()
     
 # Craate Production Rates object
 path = os.path.join("static", "data", "MOCK_DATA.json")
