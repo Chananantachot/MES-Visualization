@@ -15,8 +15,8 @@ from flask import (
     request, redirect, g
 )
 from flask_jwt_extended import (
-    create_access_token, get_jwt, jwt_required, JWTManager,
-    get_jwt_identity, set_access_cookies, unset_jwt_cookies
+    create_access_token, create_refresh_token, get_jwt, jwt_required, JWTManager,
+    get_jwt_identity, set_access_cookies, unset_jwt_cookies, verify_jwt_in_request
 )
 from flask_jwt_extended.exceptions import NoAuthorizationError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -236,6 +236,8 @@ app = Flask(__name__)
 app.config["JWT_TOKEN_LOCATION"] = ["cookies"]
 app.config["JWT_COOKIE_SECURE"] = False  # Set to False in development if not using HTTPS
 app.config['JWT_ACCESS_COOKIE_NAME'] = 'access_token_cookie' 
+app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
+app.config['JWT_REFRESH_COOKIE_PATH'] = '/token/refresh'
 app.config["JWT_SECRET_KEY"] = "$uper-secret!99"  # Change this in production
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
 jwt = JWTManager(app)
@@ -250,9 +252,17 @@ def close_connection(exception):
 def before_request():
     init_db()
 
+    if request.endpoint in ['signin','login', 'static']:
+        return
+    try:
+        verify_jwt_in_request()
+    except:
+        # Redirect to login and save the attempted URL
+        return redirect(url_for('login', next=request.url))
+    
 @app.errorhandler(NoAuthorizationError)
 def handle_missing_token(e):
-    return render_template('error.html', msg="You are not authorized to access this page."), 401
+    return render_template('error.html', status_code=401, msg="You are not authorized to access this page."), 401
 
 @app.route("/")
 @jwt_required()
@@ -314,10 +324,10 @@ def senser():
                         s = { 'x': i, 'y': value }
                         data.append(s) 
 
-                colors = ['brown', 'pink', 'red']
+                #colors = ['#a64d79', '#FF6384', '#ffd966']
                 datasets.append({
                     'label': f'Senser {j+1}',
-                    'borderColor': mcolors.CSS4_COLORS[colors[j]],
+                    #'borderColor': mcolors.CSS4_COLORS[colors[j]],
                     'borderWidth': 1,
                     'radius': 0,
                     'data': data
@@ -511,25 +521,36 @@ def signin():
     password = request.form['password']
 
     user = getCurrentUser(email)
-    if not user:
-        return redirect(url_for("login", error="Invalid username or password!"))
+    if not user or not check_password_hash(user['password'], password):
+        # Login failed — clear any old tokens and redirect with error
+        response = redirect(url_for("login", error="Invalid username or password!"))
+        response = make_response(response)
+        unset_jwt_cookies(response)
+        return response
 
-    # user is a Row object, so access password by column name
-    if not check_password_hash(user['password'], password):
-        return redirect(url_for("login", error="Invalid username or password!"))
-
+    # Login successful — issue new tokens
     access_token = create_access_token(identity=user['fullname'], expires_delta=timedelta(minutes=30))
+    refresh_token = create_refresh_token(identity=user['fullname'], expires_delta=timedelta(minutes=30))
     expiration_time = datetime.now(timezone.utc) + timedelta(minutes=30)
 
-    response = make_response(redirect(url_for("homepage")))
+    response = make_response(redirect(request.args.get("next") or url_for("homepage")))
     response.set_cookie(
         'access_token_cookie',
         access_token,
         expires=expiration_time,
         httponly=True,
+        secure=False,  # set to True if using HTTPS
+        samesite='Strict'
+    )
+    response.set_cookie(
+        'refresh_token_cookie',
+        refresh_token,
+        expires=expiration_time,
+        httponly=True,
         secure=False,
         samesite='Strict'
     )
+
     return response
 
 @app.route('/register', methods=['GET'])
@@ -545,28 +566,33 @@ def register():
     hashed_password = generate_password_hash(password)
 
     user = getCurrentUser(email)
-    newUserID = None
     if not user:
-      newUserID = registerNewUser(fullname,email,hashed_password)
+      registerNewUser(fullname,email,hashed_password)
     else:
         return redirect(url_for('newUser', email=email))   
 
     return redirect(url_for('login'))
 
-@app.after_request
-def refresh_expiring_jwts(response):
-    try:
-        exp_timestamp = get_jwt()["exp"]
-        now = datetime.now(timezone.utc)
-        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
-        if target_timestamp > exp_timestamp:
-            access_token = create_access_token(identity=get_jwt_identity())
-            set_access_cookies(response, access_token)
-        return response
-    except (RuntimeError, KeyError):
-        # Case where there is not a valid JWT. Just return the original response
-        return response
+@app.route("/token/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    identity = get_jwt_identity()
+    access_token = create_access_token(identity=identity)
+    response = make_response(redirect(request.args.get("next") or url_for("homepage")))
+    set_access_cookies(response, access_token)
+    return response
 
+@jwt.expired_token_loader
+def expired_token_callback(jwt_header, jwt_payload):
+    response = make_response(redirect(request.args.get("next") or url_for("homepage")))
+    unset_jwt_cookies(response)
+    return response, 401
+
+@jwt.unauthorized_loader
+def missing_token_callback(err):
+    response = make_response(redirect(request.args.get("next") or url_for("homepage")))
+    unset_jwt_cookies(response)
+    return response, 401
 
 def generate_time_list(start_time_str, interval_minutes=15):
     """Generates a list of time strings for 8 hours, with a given interval.
