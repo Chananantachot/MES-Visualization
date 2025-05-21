@@ -506,7 +506,7 @@ def senserTemperature():
 
 @app.route('/signin', methods=['GET'])
 def login():
-    error = request.args.get('error')
+    error = request.args.get('error','')
     return render_template('login.html', error = error)
 
 @app.route('/logout', methods=['POST', 'GET'])
