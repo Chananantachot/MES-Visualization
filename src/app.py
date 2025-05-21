@@ -1,28 +1,32 @@
-from flask import Flask, make_response, url_for ,render_template,jsonify,request,redirect
-from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity, unset_jwt_cookies
-from flask_jwt_extended.exceptions import NoAuthorizationError
-from jwt.exceptions import ExpiredSignatureError
-from werkzeug.security import generate_password_hash, check_password_hash
-from flask import g
-from datetime import datetime, timedelta
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.ensemble import RandomForestClassifier, IsolationForest
-from sklearn.model_selection import train_test_split
-from sklearn.inspection import permutation_importance
-import matplotlib
-import matplotlib.colors as mcolors
-import streamlit as st
-import sqlite3
-from opcua import Client
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 import datetime
 import json
 import random
+import sqlite3
 import uuid
+
+import numpy as np
+import pandas as pd
+import matplotlib
+import matplotlib.colors as mcolors
+import streamlit as st
+
+from flask import (
+    Flask, make_response, url_for, render_template, jsonify,
+    request, redirect, g
+)
+from flask_jwt_extended import (
+    create_access_token, get_jwt, jwt_required, JWTManager,
+    get_jwt_identity, set_access_cookies, unset_jwt_cookies
+)
+from flask_jwt_extended.exceptions import NoAuthorizationError
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from datetime import datetime, timedelta, timezone
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier, IsolationForest
+
+from opcua import Client
 matplotlib.use('Agg')
 
 # Generate random temperature and motor speed data
@@ -214,7 +218,7 @@ def init_db():
 def getCurrentUser(email):
     db = get_db()
     cursor = db.cursor()
-    cursor.execute(f'SELECT email From users Where email = "{email}"')
+    cursor.execute(f'SELECT fullname,email,password From users Where email = "{email}"')
     user = cursor.fetchone()
 
     return user
@@ -374,59 +378,69 @@ def motor():
 @app.route("/ai/motorSpeed")
 @jwt_required()
 def motorSpeedWithAI():
-    _temperature = _motor_speed = []
+    # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
     client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:
         client.connect()
         idx = 2
         motor = client.get_node(f"ns={idx};s=Motor")
-        _temperature = motor.get_child([f"{idx}:temperatures"]).get_value()
-        _motor_speed = motor.get_child([f"{idx}:speeds"]).get_value()
+        temperatures = motor.get_child([f"{idx}:temperatures"]).get_value()
+        motor_speeds = motor.get_child([f"{idx}:speeds"]).get_value()
+        temperatures = np.array(temperature)
+        motor_speeds = np.array(motor_speed)
+    except Exception:
+        # Fallback to simulated data if OPC UA fetch fails
+        temperatures = np.linspace(20, 100, 50)
+        motor_speeds = 5000 - (temperatures * 30) + np.random.normal(0, 100, size=50)
     finally:
         client.disconnect()
-    
-    _temperature = temperature
-    _motor_speed = 5000 - (_temperature * 30) + np.random.normal(0, 100, size=50)
-    X = _temperature.reshape(-1, 1)
-    y = _motor_speed    
 
+    # Prepare data for regression
+    X = temperatures.reshape(-1, 1)
+    y = motor_speed
+
+    # Train linear regression model
     model = LinearRegression()
     model.fit(X, y)
-
     predicted_speed = model.predict(X)
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        data = jsonify({
-            'labels' : _temperature.tolist(),
-            'datasets' : [
+        # Return JSON for charting
+        return jsonify({
+            'labels': temperatures.tolist(),
+            'datasets': [
                 {
                     'label': 'Actual Data',
-                    'data' : _motor_speed.tolist(),
+                    'data': motor_speeds.tolist(),
                     'yAxisID': 'y'
                 },
                 {
                     'label': 'Learned Trend Line',
-                    'data' : predicted_speed.tolist(),
+                    'data': predicted_speed.tolist(),
                     'yAxisID': 'y1'
-                }            
+                }
             ]
         })
-        return data
     else:
-        current_user = get_jwt_identity()  
+        # Render HTML table and model info
+        current_user = get_jwt_identity()
         model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
         r2 = r2_score(y, predicted_speed)
         r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
-        # Step 5: Create the updated table
         data_table = pd.DataFrame({
-            'Temperature (°C)': _temperature,
-            'Actual Speed (RPM)': _motor_speed,
+            'Temperature (°C)': temperatures,
+            'Actual Speed (RPM)': motor_speed,
             'Predicted Speed (RPM)': predicted_speed
         })
-
         table_html = data_table.to_html(classes='table table-striped', index=False)
-        return render_template("motorSpeed.html", table=table_html, model_eq=model_eq, r2_text=r2_text, current_user = current_user)
+        return render_template(
+            "motorSpeed.html",
+            table=table_html,
+            model_eq=model_eq,
+            r2_text=r2_text,
+            current_user=current_user
+        )
 
 @app.route("/opcua/products")
 def products():
@@ -436,7 +450,6 @@ def products():
         client.connect()
         idx = 2
         products_folder = client.get_node(f"ns={idx};s=Products") 
-       
         product_nodes = products_folder.get_children()
         labels = []
         data = []
@@ -460,34 +473,26 @@ def senserTemperature():
     client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:
         client.connect()
-        start_time = "08:00"
         idx = 2
-        sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
-    
+        start_time = "08:00"
+        sensors_folder = client.get_node(f"ns={idx};s=Sensors")
         sensor_nodes = sensors_folder.get_children()
-        labels = []
+        labels = generate_time_list(start_time, 20)
         data = []
-        #colors = ["#87cefa", "#ff69b4"]
-     
-        for i,senser in enumerate(sensor_nodes):
-            labels = generate_time_list(start_time, 20)
-            s = {
-                'label': senser.get_browse_name().Name,
-                'data': [round(random.uniform(0, 100),2) for _ in range(24)],
-               # 'borderColor': colors[i],
-               # 'backgroundColor': colors[i]
+
+        for sensor in sensor_nodes:
+            sensor_data = {
+                'label': sensor.get_browse_name().Name,
+                'data': [round(random.uniform(0, 100), 2) for _ in range(len(labels))]
             }
-            
-            data.append(s)
+            data.append(sensor_data)
     finally:
         client.disconnect()
 
-    dataset = json.dumps({
+    return json.dumps({
         'labels': labels,
-        'data': data 
-        })
-
-    return dataset
+        'data': data
+    })
 
 @app.route('/signin', methods=['GET'])
 def login():
@@ -506,14 +511,25 @@ def signin():
     password = request.form['password']
 
     user = getCurrentUser(email)
-    if not user and not check_password_hash(user['password'], password):
+    if not user:
         return redirect(url_for("login", error="Invalid username or password!"))
-    
-    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
-    access_token = create_access_token(identity=user['email'], expires_delta=timedelta(minutes=30))
-   
+
+    # user is a Row object, so access password by column name
+    if not check_password_hash(user['password'], password):
+        return redirect(url_for("login", error="Invalid username or password!"))
+
+    access_token = create_access_token(identity=user['fullname'], expires_delta=timedelta(minutes=30))
+    expiration_time = datetime.now(timezone.utc) + timedelta(minutes=30)
+
     response = make_response(redirect(url_for("homepage")))
-    response.set_cookie('access_token_cookie', access_token,expires=expiration_time, httponly=True, secure=False, samesite='Strict')
+    response.set_cookie(
+        'access_token_cookie',
+        access_token,
+        expires=expiration_time,
+        httponly=True,
+        secure=False,
+        samesite='Strict'
+    )
     return response
 
 @app.route('/register', methods=['GET'])
@@ -536,6 +552,21 @@ def register():
         return redirect(url_for('newUser', email=email))   
 
     return redirect(url_for('login'))
+
+@app.after_request
+def refresh_expiring_jwts(response):
+    try:
+        exp_timestamp = get_jwt()["exp"]
+        now = datetime.now(timezone.utc)
+        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
+        if target_timestamp > exp_timestamp:
+            access_token = create_access_token(identity=get_jwt_identity())
+            set_access_cookies(response, access_token)
+        return response
+    except (RuntimeError, KeyError):
+        # Case where there is not a valid JWT. Just return the original response
+        return response
+
 
 def generate_time_list(start_time_str, interval_minutes=15):
     """Generates a list of time strings for 8 hours, with a given interval.
