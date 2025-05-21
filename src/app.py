@@ -563,6 +563,10 @@ def register():
     fullname = request.form['fullname']
     email = request.form['email']
     password = request.form['password']
+
+    if not fullname or not email or not password:
+        return redirect(url_for('newUser', error="Please fill in all fields."))
+
     hashed_password = generate_password_hash(password)
 
     user = getCurrentUser(email)
