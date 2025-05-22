@@ -10,17 +10,16 @@ class mes:
     
     @staticmethod
     def motor_speed():
-        return 5000 - (mes.temperature * 30) + np.random.normal(0, 100, size=50)
+        return 5000 - (mes.temperature() * 30) + np.random.normal(0, 100, size=50)
 
     # Normalize data
     @staticmethod
     def temp_norm():
-        return (mes.temperature - mes.temperature.mean()) / mes.temperature.std()
+        return (mes.temperature() - mes.temperature().mean()) / mes.temperature().std()
     
     @staticmethod
     def speed_norm():
-        return (mes.motor_speed - mes.motor_speed.mean()) / mes.motor_speed.std()
-
+        return (mes.motor_speed() - mes.motor_speed().mean()) / mes.motor_speed().std()
 
     @staticmethod
     def generate_sensor_data():

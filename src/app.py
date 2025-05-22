@@ -2,6 +2,8 @@ import datetime
 import json
 import random
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 from authDb import authDb
 from mes import mes
