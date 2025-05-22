@@ -12,13 +12,8 @@
 
         This website may also be temporarily unable to process your request due to resource limits. Please try again later.
 
-        If you’re the account owner and continue to see this message, please <a href="{{ url_for('login') }}">login</a>, or if you don't have account please <a href="{{ url_for('newUser') }}">register</a>.
+        If you’re the account owner and continue to see this message, please <a href="{{ url_for('users.login') }}">login</a>, or if you don't have account please <a href="{{ url_for('users.newUser') }}">register</a>.
         </p>
         </div>
     </div>
-
- <!-- <div class="alert alert-danger" role="alert">
-  {{ msg }}
-  <a class="btn btn-light" href="{{ url_for('login') }}"> Login </a> 
- </div> -->
 {% endblock %}

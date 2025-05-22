@@ -1,0 +1,2 @@
+class TokenUsedError(Exception):
+    pass

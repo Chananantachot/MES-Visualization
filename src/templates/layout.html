@@ -41,14 +41,14 @@
             <i class="fa-solid fa-user"></i>
             <span class="navbar-text">Hello, {{ current_user }}</span>
           {% else %}
-            <a href="{{ url_for('login') }}">Login</a>
+            <a href="{{ url_for('users.login') }}">Login</a>
           {% endif %}
         </li>
         <li>
           {%  if current_user %}
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('users.logout') }}">Logout</a>
            {% else %}
-            <a href="{{ url_for('newUser') }}">Register</a>
+            <a href="{{ url_for('users.newUser') }}">Register</a>
            {% endif %}
         </li>
       </ul>
