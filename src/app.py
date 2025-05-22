@@ -223,7 +223,7 @@ def getCurrentUser(email):
 
     return user
 
-def registerNewUser(fullname,email,password):
+def createUser(fullname,email,password):
     db = get_db()
     cursor = db.cursor()
     userid = str(uuid.uuid4())
@@ -324,10 +324,8 @@ def senser():
                         s = { 'x': i, 'y': value }
                         data.append(s) 
 
-                #colors = ['#a64d79', '#FF6384', '#ffd966']
                 datasets.append({
                     'label': f'Senser {j+1}',
-                    #'borderColor': mcolors.CSS4_COLORS[colors[j]],
                     'borderWidth': 1,
                     'radius': 0,
                     'data': data
@@ -520,6 +518,13 @@ def signin():
     email = request.form['email']
     password = request.form['password']
 
+    if not email or not password:
+        # Redirect to login with error
+        response = redirect(url_for("login", error="Invalid username or password!"))
+        response = make_response(response)
+        unset_jwt_cookies(response)
+        return response
+
     user = getCurrentUser(email)
     if not user or not check_password_hash(user['password'], password):
         # Login failed — clear any old tokens and redirect with error
@@ -529,27 +534,12 @@ def signin():
         return response
 
     # Login successful — issue new tokens
-    access_token = create_access_token(identity=user['fullname'], expires_delta=timedelta(minutes=30))
-    refresh_token = create_refresh_token(identity=user['fullname'], expires_delta=timedelta(minutes=30))
-    expiration_time = datetime.now(timezone.utc) + timedelta(minutes=30)
-
+    access_token = create_access_token(identity=user['fullname'], expires_delta=timedelta(minutes=3))
+    refresh_token = create_refresh_token(identity=user['fullname'], expires_delta=timedelta(minutes=3))
+    # Set the tokens in cookies
     response = make_response(redirect(request.args.get("next") or url_for("homepage")))
-    response.set_cookie(
-        'access_token_cookie',
-        access_token,
-        expires=expiration_time,
-        httponly=True,
-        secure=False,  # set to True if using HTTPS
-        samesite='Strict'
-    )
-    response.set_cookie(
-        'refresh_token_cookie',
-        refresh_token,
-        expires=expiration_time,
-        httponly=True,
-        secure=False,
-        samesite='Strict'
-    )
+    _set_jwt_cookies(response, 'access_token_cookie', access_token)
+    _set_jwt_cookies(response, 'refresh_token_cookie', refresh_token)
 
     return response
 
@@ -567,11 +557,10 @@ def register():
     if not fullname or not email or not password:
         return redirect(url_for('newUser', error="Please fill in all fields."))
 
-    hashed_password = generate_password_hash(password)
-
     user = getCurrentUser(email)
     if not user:
-      registerNewUser(fullname,email,hashed_password)
+      hashed_password = generate_password_hash(password)
+      createUser(fullname,email,hashed_password)
     else:
         return redirect(url_for('newUser', email=email))   
 
@@ -614,6 +603,15 @@ def generate_time_list(start_time_str, interval_minutes=15):
         current_time = start_time + datetime.timedelta(minutes=i * interval_minutes)
         time_list.append(current_time.strftime("%H:%M"))
     return time_list
+
+def _set_jwt_cookies(response, key ,token):
+    response.set_cookie(
+        key,
+        token,
+        httponly=True,
+        secure=False,  # set to True if using HTTPS
+        samesite='Strict'
+    )
 
 if __name__ == '__main__':
    app.run(debug=True, host='0.0.0.0', port=5000)
