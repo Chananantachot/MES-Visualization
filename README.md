@@ -45,6 +45,7 @@ It is perfect for engineers, students, or anyone interested in MES/OT/IT systems
 
 - **Frontend**: flask/jinjar/javascript 
 - **Backend**: Python
+- **Testing Framework**: Behave
 - **Data**: Simulated via pandas, NumPy
 - **OPC UA**: Prosys Simulation Server
 - **AI/ML (optional)**: Scikit-learn or custom logic for alerts
@@ -56,9 +57,17 @@ It is perfect for engineers, students, or anyone interested in MES/OT/IT systems
    ```bash
    git clone https://github.com/Chananantachot/MES-Visualization.git
    cd mes-virtualization/src
-2. on your termianl -> follow instructions of this link https://flask.palletsprojects.com/en/stable/installation/#create-an-environment 
-3. pip install -r requirements.txt
-4. flask --app app run --debug & python3 server.py
+   
+2. on your termianl -> follow instructions of this link https://flask.palletsprojects.com/en/stable/installation/#create-an-environment
+   or if you have it run
+   ```bash
+      . .venv/bin/activate
+   
+3.  ```bash
+    pip install -r requirements.txt
+    
+4.  ```bash
+     flask --app app run --debug & python3 server.py
 
 
 
