@@ -1,9 +1,9 @@
 from behave import given, then
-from app import machine_health
+from mes import mes
 
 @given("the machine health function is executed")
 def step_impl(context):
-    context.table_html, context.machine_data = machine_health()
+    context.table_html, context.machine_data = mes.machine_health()
 
 @then("the machine health output should include an HTML table")
 def step_impl(context):

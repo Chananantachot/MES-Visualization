@@ -1,10 +1,10 @@
 from behave import given, then
-from app import sensor_anomaly
+from mes import mes
 
 # Start testing sensor anomaly fuction.
 @given("the sensor anomaly function is executed")
 def step_impl(context):
-    context.table_html, context.sensor_summary = sensor_anomaly()
+    context.table_html, context.sensor_summary = mes.sensor_anomaly()
 
 @then("the sensor anomaly output should include an HTML table")
 def step_impl(context):

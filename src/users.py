@@ -83,7 +83,7 @@ def register():
 
     return redirect(url_for('users.newUser',userid = userid ,email=None))
 
-@users.route('/active/', methods=['POST'])
+@users.route('/active', methods=['POST'])
 def activateUser():
     userid = request.form['userid']
     if not userid:

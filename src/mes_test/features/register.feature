@@ -12,8 +12,8 @@ Feature: MES Register page
           | email    | test@mail.com |
           | password | qubxo8-xaqwyp-wusMej |
     When I submit the register form using POST    
-    Then the signin response status code should be 200
-    And the signin response body should contain "Sign in to continue to Fake it easy"  
+    Then the register response status code should be 200
+    And the register response body should contain "Account created successfully." and "userid" value in hidden field
 
   Scenario: Check if do Submit empty user to register page works
       Given the register form endpoint is "/register"

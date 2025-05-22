@@ -1,10 +1,10 @@
 from behave import given, then
-from app import production_slowdown
+from mes import mes
 
 # Start testing production slowdown fuction.
 @given("the production slowdown function is executed")
 def step_impl(context):
-    context.table_html, context.summary = production_slowdown()
+    context.table_html, context.summary = mes.production_slowdown()
 
 @then("the output should include an HTML table")
 def step_impl(context):
