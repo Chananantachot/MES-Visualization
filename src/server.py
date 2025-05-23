@@ -1,6 +1,8 @@
+import random
 import time
 import os
 import json
+import numpy as np
 from opcua import Server
 from mes import mes
 
@@ -23,9 +25,14 @@ motors_folder = objects.add_folder(f"ns={idx};s=Motors", "Motors")
 
 # Create Motor object and variables
 motor = motors_folder.add_object(f"ns={idx};s=Motor", "Motor")
-motor_temperature = motor.add_variable(idx, "Temperatures", mes_instance.temperature.tolist())
+motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
+motor_temperature = motor.add_variable(idx, "Temperatures", motor_temperatures)
 motor_temperature.set_writable()
-motor_speed = motor.add_variable(idx, "Speeds", mes_instance.motor_speed.tolist())
+
+rates = [5000 - (temp * 30) + np.random.normal(0, 100) for temp in motor_temperatures]
+speeds = [round(random.uniform(rate / 2, 8000), 0) for rate in rates]
+
+motor_speed = motor.add_variable(idx, "MotorSpeeds", speeds)
 motor_speed.set_writable()
 
 # Create Sensor objects and variables

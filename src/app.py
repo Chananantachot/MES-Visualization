@@ -1,5 +1,4 @@
 import datetime
-import json
 import random
 import os
 from dotenv import load_dotenv
@@ -141,46 +140,6 @@ def senser():
         current_user = get_jwt_identity()   
         return render_template('senser.html', table=table_html, current_user = current_user)
 
-@app.route("/opcua/motors")
-def motor():
-    # Connect to the OPC UA server
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        motors_folder = client.get_node(f"ns={idx};s=Mortors") 
-       
-        motor_nodes = motors_folder.get_children()
-        labels = []
-        data = []
-        Temperatures = []
-        speeds = []
-        for motor in motor_nodes:
-            Temperatures = [round(random.uniform(0, 100),2) for _ in range(100)] #temperature
-            rate_node = motor.get_child([f"{idx}:MotorSpeeds"]) 
-            speeds = [round(random.uniform(rate_node.get_value() / 2, 8000),0) for _ in range(100)]
-
-        for i,temperature in enumerate(Temperatures):    
-            for j, speed in enumerate(speeds):
-                if temperature > 55:
-                   speed = round(random.uniform(1000, 4000),0)
-                else:
-                   speed = round(random.uniform(5000, 8000),0)   
-                speeds[j] = speed   
-
-        labels = Temperatures
-        data = speeds        
-
-    finally:
-        client.disconnect()
-
-    dataset = jsonify({
-        'labels': labels,
-        'data': data
-    })
-
-    return dataset
-
 @app.route("/ai/motorSpeed")
 @jwt_required()
 def motorSpeedWithAI():
@@ -190,8 +149,8 @@ def motorSpeedWithAI():
         client.connect()
         idx = 2
         motor = client.get_node(f"ns={idx};s=Motor")
-        temperatures = motor.get_child([f"{idx}:temperatures"]).get_value()
-        motor_speeds = motor.get_child([f"{idx}:speeds"]).get_value()
+        temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
+        motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
 
     except Exception:
         # Fallback to simulated data if OPC UA fetch fails
@@ -212,11 +171,11 @@ def motorSpeedWithAI():
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         # Return JSON for charting
         return jsonify({
-            'labels': temperatures.tolist(),
+            'labels': temperatures,
             'datasets': [
                 {
                     'label': 'Actual Data',
-                    'data': motor_speeds.tolist(),
+                    'data': motor_speeds,
                     'yAxisID': 'y'
                 },
                 {
@@ -234,9 +193,9 @@ def motorSpeedWithAI():
         r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
         data_table = pd.DataFrame({
-            'Temperature (°C)': temperatures,
-            'Actual Speed (RPM)': motor_speeds,
-            'Predicted Speed (RPM)': predicted_speed
+            'Temperature (°C)': np.array(temperatures).flatten(),
+            'Actual Speed (RPM)': np.array(motor_speeds).flatten(),
+            'Predicted Speed (RPM)': np.array(predicted_speed).flatten()
         })
         table_html = data_table.to_html(classes='table table-striped', index=False)
         return render_template(
