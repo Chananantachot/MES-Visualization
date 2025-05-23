@@ -7,14 +7,13 @@ from sklearn.linear_model import LinearRegression
 class mes:
     def __init__(self):
         temperature = np.linspace(20, 100, 50)
-        motor_speed = 5000 - (temperature * 30) + np.random.normal(0, 100, size=50)
-       
+        self.motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
+        rates = [5000 - (temp * 30) + np.random.normal(0, 100) for temp in self.motor_temperatures]
+        
         self.temperature = temperature
-        self.motor_speed = motor_speed
+        self.motor_speed = [round(random.uniform(rate / 2, 8000), 0) for rate in rates]
         self.sensor_temperatures = [0.0] * 7
-        self.temp_norm = (temperature - temperature.mean()) / temperature.std()
-        self.speed_norm = (motor_speed - motor_speed.mean()) / motor_speed.std()
-       
+        
     def generate_signal_data(self):
         mean, std, tail = random.uniform(200, 700), random.uniform(20, 50), [200, 300]
         signal_data = np.random.normal(mean, std, 980)

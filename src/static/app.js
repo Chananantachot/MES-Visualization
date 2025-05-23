@@ -52,7 +52,7 @@ async function fetchData(url) {
 }
 
 async function updateChart() {
-    var data = await fetchData('/opcua/products');
+    var data = await fetchData('/productionRates');
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets[0].data = data.data;
@@ -63,7 +63,7 @@ async function updateChart() {
 }
 
 async function updateMotorSpeedChart() {
-    var data = await fetchData("/ai/motorSpeed");
+    var data = await fetchData("/motor");
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets = data.datasets;
@@ -71,7 +71,6 @@ async function updateMotorSpeedChart() {
 }
 
 async function updateSensersChart() {
-
     var datasets = await fetchData('/senser');
     const totalDuration = 10000;
 

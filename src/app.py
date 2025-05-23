@@ -1,4 +1,3 @@
-import datetime
 import random
 import os
 from dotenv import load_dotenv
@@ -84,8 +83,32 @@ def homepage():
 @app.route("/productionRates")
 @jwt_required()
 def productionRates():
-    current_user = get_jwt_identity() 
-    return render_template('index.html', current_user = current_user)
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        # Connect to the OPC UA server
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:
+            client.connect()
+            idx = 2
+            products_folder = client.get_node(f"ns={idx};s=Products") 
+            product_nodes = products_folder.get_children()
+            labels = []
+            data = []
+            for product in product_nodes:
+                labels.append(product.get_browse_name().Name)
+                rate_node = product.get_child([f"{idx}:ProductRate"]) 
+                rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
+                data.append((rate_value))
+        finally:
+            client.disconnect()
+
+        dataset = jsonify({
+            'labels': labels,
+            'data': data
+        })
+        return dataset
+    else:    
+        current_user = get_jwt_identity() 
+        return render_template('index.html', current_user = current_user)
 
 @app.route("/iotDevices")
 @jwt_required()
@@ -96,8 +119,67 @@ def iotDevices():
 @app.route("/motor")
 @jwt_required()
 def motorSpeed():
-    current_user = get_jwt_identity()   
-    return render_template('motor.html', current_user = current_user)
+     # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
+    client = Client("opc.tcp://0.0.0.0:4840/server/")
+    try:
+        client.connect()
+        idx = 2
+        motor = client.get_node(f"ns={idx};s=Motor")
+        temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
+        motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
+
+    except Exception:
+        # Fallback to simulated data if OPC UA fetch fails
+        temperatures = mes.temperature 
+        motor_speeds = mes.motor_speed 
+    finally:
+        client.disconnect()
+
+    # Prepare data for regression
+    X = np.array(temperatures).reshape(-1, 1)
+    y = motor_speeds
+
+    # Train linear regression model
+    model = LinearRegression()
+    model.fit(X, y)
+    predicted_speed = model.predict(X)
+
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        # Return JSON for charting
+        return jsonify({
+            'labels': temperatures,
+            'datasets': [
+                {
+                    'label': 'Actual Data',
+                    'data': motor_speeds,
+                    'yAxisID': 'y'
+                },
+                {
+                    'label': 'Learned Trend Line',
+                    'data': predicted_speed.tolist(),
+                    'yAxisID': 'y1'
+                }
+            ]
+        })
+    else:    
+        current_user = get_jwt_identity()
+        model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
+        r2 = r2_score(y, predicted_speed)
+        r2_text = f"Model Accuracy (R²): {r2:.3f}"
+
+        data_table = pd.DataFrame({
+            'Temperature (°C)': np.array(temperatures).flatten(),
+            'Actual Speed (RPM)': np.array(motor_speeds).flatten(),
+            'Predicted Speed (RPM)': np.array(predicted_speed).flatten()
+        })
+        table_html = data_table.to_html(classes='table table-striped', index=False)
+        return render_template(
+            "motorSpeed.html",
+            table=table_html,
+            model_eq=model_eq,
+            r2_text=r2_text,
+            current_user=current_user
+        )
 
 @app.route("/senser")
 @jwt_required()
@@ -140,97 +222,6 @@ def senser():
         current_user = get_jwt_identity()   
         return render_template('senser.html', table=table_html, current_user = current_user)
 
-@app.route("/ai/motorSpeed")
-@jwt_required()
-def motorSpeedWithAI():
-    # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        motor = client.get_node(f"ns={idx};s=Motor")
-        temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
-        motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
-
-    except Exception:
-        # Fallback to simulated data if OPC UA fetch fails
-        temperatures = mes.temperature 
-        motor_speeds = mes.motor_speed 
-    finally:
-        client.disconnect()
-
-    # Prepare data for regression
-    X = np.array(temperatures).reshape(-1, 1)
-    y = motor_speeds
-
-    # Train linear regression model
-    model = LinearRegression()
-    model.fit(X, y)
-    predicted_speed = model.predict(X)
-
-    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        # Return JSON for charting
-        return jsonify({
-            'labels': temperatures,
-            'datasets': [
-                {
-                    'label': 'Actual Data',
-                    'data': motor_speeds,
-                    'yAxisID': 'y'
-                },
-                {
-                    'label': 'Learned Trend Line',
-                    'data': predicted_speed.tolist(),
-                    'yAxisID': 'y1'
-                }
-            ]
-        })
-    else:
-        # Render HTML table and model info
-        current_user = get_jwt_identity()
-        model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
-        r2 = r2_score(y, predicted_speed)
-        r2_text = f"Model Accuracy (R²): {r2:.3f}"
-
-        data_table = pd.DataFrame({
-            'Temperature (°C)': np.array(temperatures).flatten(),
-            'Actual Speed (RPM)': np.array(motor_speeds).flatten(),
-            'Predicted Speed (RPM)': np.array(predicted_speed).flatten()
-        })
-        table_html = data_table.to_html(classes='table table-striped', index=False)
-        return render_template(
-            "motorSpeed.html",
-            table=table_html,
-            model_eq=model_eq,
-            r2_text=r2_text,
-            current_user=current_user
-        )
-
-@app.route("/opcua/products")
-def products():
-    # Connect to the OPC UA server
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        products_folder = client.get_node(f"ns={idx};s=Products") 
-        product_nodes = products_folder.get_children()
-        labels = []
-        data = []
-        for product in product_nodes:
-            labels.append(product.get_browse_name().Name)
-            rate_node = product.get_child([f"{idx}:ProductRate"]) 
-            rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
-            data.append((rate_value))
-    finally:
-        client.disconnect()
-
-    dataset = jsonify({
-        'labels': labels,
-        'data': data
-    })
-    return dataset
-
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
     response = make_response(redirect(request.args.get("next") or url_for("homepage")))
@@ -242,23 +233,6 @@ def missing_token_callback(err):
     response = make_response(redirect(request.args.get("next") or url_for("homepage")))
     unset_jwt_cookies(response)
     return response, 401
-
-def generate_time_list(start_time_str, interval_minutes=15):
-    """Generates a list of time strings for 8 hours, with a given interval.
-
-    Args:
-        start_time_str: A string representing the start time in HH:MM format (e.g., "09:00").
-        interval_minutes: The interval between time entries in minutes.
-
-    Returns:
-        A list of time strings in HH:MM format.
-    """
-    start_time = datetime.datetime.strptime(start_time_str, "%H:%M")
-    time_list = []
-    for i in range(8 * 60 // interval_minutes + 1): # Calculate total steps for 8 hours
-        current_time = start_time + datetime.timedelta(minutes=i * interval_minutes)
-        time_list.append(current_time.strftime("%H:%M"))
-    return time_list
 
 if __name__ == '__main__':
    app.run(debug=True, host='0.0.0.0', port=5001)
