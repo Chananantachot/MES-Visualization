@@ -43,7 +43,7 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
 jwt = JWTManager(app)
-
+mes = mes()
 @app.teardown_appcontext
 def close_connection(exception):
     db = getattr(g, '_database', None)
@@ -69,8 +69,8 @@ def homepage():
 
     sensor_html, sensor_summary = mes.sensor_anomaly()
     st.markdown(sensor_html, unsafe_allow_html=True)
-    table_html, summary_row = mes.production_slowdown()
 
+    table_html, summary_row = mes.production_slowdown()
     st.markdown(table_html, unsafe_allow_html=True)
 
     machine_html, machine_data = mes.machine_health()
@@ -103,7 +103,7 @@ def motorSpeed():
 @app.route("/senser")
 @jwt_required()
 def senser():
-    table_html, sensors = mes.sensor_anomaly()
+    table_html, _ = mes.sensor_anomaly()
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         datasets = []
         client = Client("opc.tcp://0.0.0.0:4840/server/")
@@ -113,8 +113,8 @@ def senser():
             sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
             sensor_nodes = sensors_folder.get_children()
             values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
-            for j, senser in enumerate(sensor_nodes):
-                senser_node = senser.get_child([f"{idx}:Signal"]) 
+            for j, sensor in enumerate(sensor_nodes):
+                senser_node = sensor.get_child([f"{idx}:Signal"]) 
                 signals = senser_node.get_value()
                 data = []
                 for i, value in enumerate(signals):
@@ -174,7 +174,7 @@ def motor():
     finally:
         client.disconnect()
 
-    dataset = json.dumps({
+    dataset = jsonify({
         'labels': labels,
         'data': data
     })
@@ -192,18 +192,17 @@ def motorSpeedWithAI():
         motor = client.get_node(f"ns={idx};s=Motor")
         temperatures = motor.get_child([f"{idx}:temperatures"]).get_value()
         motor_speeds = motor.get_child([f"{idx}:speeds"]).get_value()
-        temperatures = np.array(mes.temperature())
-        motor_speeds = np.array(mes.motor_speed())
+
     except Exception:
         # Fallback to simulated data if OPC UA fetch fails
-        temperatures = np.linspace(20, 100, 50)
-        motor_speeds = 5000 - (temperatures * 30) + np.random.normal(0, 100, size=50)
+        temperatures = mes.temperature 
+        motor_speeds = mes.motor_speed 
     finally:
         client.disconnect()
 
     # Prepare data for regression
-    X = temperatures.reshape(-1, 1)
-    y = mes.motor_speed()
+    X = np.array(temperatures).reshape(-1, 1)
+    y = motor_speeds
 
     # Train linear regression model
     model = LinearRegression()
@@ -236,7 +235,7 @@ def motorSpeedWithAI():
 
         data_table = pd.DataFrame({
             'Temperature (°C)': temperatures,
-            'Actual Speed (RPM)': mes.motor_speed(),
+            'Actual Speed (RPM)': motor_speeds,
             'Predicted Speed (RPM)': predicted_speed
         })
         table_html = data_table.to_html(classes='table table-striped', index=False)
@@ -273,33 +272,6 @@ def products():
     })
     return dataset
 
-@app.route("/opcua/sensors")
-def senserTemperature():
-    # Connect to the OPC UA server
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        start_time = "08:00"
-        sensors_folder = client.get_node(f"ns={idx};s=Sensors")
-        sensor_nodes = sensors_folder.get_children()
-        labels = generate_time_list(start_time, 20)
-        data = []
-
-        for sensor in sensor_nodes:
-            sensor_data = {
-                'label': sensor.get_browse_name().Name,
-                'data': [round(random.uniform(0, 100), 2) for _ in range(len(labels))]
-            }
-            data.append(sensor_data)
-    finally:
-        client.disconnect()
-
-    return json.dumps({
-        'labels': labels,
-        'data': data
-    })
-
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
     response = make_response(redirect(request.args.get("next") or url_for("homepage")))
@@ -330,4 +302,4 @@ def generate_time_list(start_time_str, interval_minutes=15):
     return time_list
 
 if __name__ == '__main__':
-   app.run(debug=True, host='0.0.0.0', port=5000)
+   app.run(debug=True, host='0.0.0.0', port=5001)

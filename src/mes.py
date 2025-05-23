@@ -1,28 +1,27 @@
+import random
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest, RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 
 class mes:
-    @staticmethod
-    def temperature():
-        return np.linspace(20, 100, 50)
-    
-    @staticmethod
-    def motor_speed():
-        return 5000 - (mes.temperature() * 30) + np.random.normal(0, 100, size=50)
-
-    # Normalize data
-    @staticmethod
-    def temp_norm():
-        return (mes.temperature() - mes.temperature().mean()) / mes.temperature().std()
-    
-    @staticmethod
-    def speed_norm():
-        return (mes.motor_speed() - mes.motor_speed().mean()) / mes.motor_speed().std()
-
-    @staticmethod
-    def generate_sensor_data():
+    def __init__(self):
+        temperature = np.linspace(20, 100, 50)
+        motor_speed = 5000 - (temperature * 30) + np.random.normal(0, 100, size=50)
+       
+        self.temperature = temperature
+        self.motor_speed = motor_speed
+        self.sensor_temperatures = [0.0] * 7
+        self.temp_norm = (temperature - temperature.mean()) / temperature.std()
+        self.speed_norm = (motor_speed - motor_speed.mean()) / motor_speed.std()
+       
+    def generate_signal_data(self):
+        mean, std, tail = random.uniform(200, 700), random.uniform(20, 50), [200, 300]
+        signal_data = np.random.normal(mean, std, 980)
+        signal_data = np.append(signal_data, tail)
+        return signal_data.tolist() 
+      
+    def generate_sensor_data(self):
         np.random.seed(42)
         n = 100
         temperature = np.random.normal(70, 10, n)
@@ -40,7 +39,6 @@ class mes:
         })
         return df
 
-    @staticmethod
     def analyze_data(df):
         X = df[['Temperature', 'Humidity', 'Vibration', 'Age']]
         y = df['Signal Loss']
@@ -54,8 +52,7 @@ class mes:
         }).sort_values(by="Importance", ascending=False)
         return importance_df
 
-    @staticmethod
-    def machine_health():
+    def machine_health(self):
     # Simulate machine health data
         data = pd.DataFrame({
             'MachineID': [f"M{i:02d}" for i in range(1, 11)],
@@ -82,8 +79,7 @@ class mes:
         
         return table_html, machine_data
 
-    @staticmethod
-    def production_slowdown():
+    def production_slowdown(self):
     # 1) Simulate data
         data = pd.DataFrame({
             'Shift': np.random.choice([1, 2, 3], size=10),
@@ -153,8 +149,7 @@ class mes:
         table_html = styler.to_html()
         return table_html, summary
 
-    @staticmethod
-    def sensor_anomaly():
+    def sensor_anomaly(self):
         # Simulate sensor readings with anomalies
         data = pd.DataFrame({
             'Sensor_1': np.random.normal(100, 5, 20),
@@ -172,7 +167,6 @@ class mes:
         sensor_summary = data.to_dict()
         return table_html, sensor_summary
     
-    @staticmethod
     def impact_to_category(value):
         if -1 <= value <= 1:
             return 'Low'
