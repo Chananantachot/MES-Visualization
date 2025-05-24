@@ -6,7 +6,7 @@
     - Stores live machine/sensor data
     - Exposes data via standard OPC UA protocol
 
-     ```bash
+     ```
         from opcua import Server
         # Initialize MES and OPC UA Server
         mes_instance = mes()
@@ -31,3 +31,12 @@
 #⬅️➡️ Web UI / Machine Learning / Dashboards
     - Visualizes real-time & historical data
     - Adds analytics like anomaly detection, predictions, etc.
+
+    ```
+     client = Client("opc.tcp://0.0.0.0:4840/server/")
+    try:    
+            client.connect()
+            idx = 2
+            machines_folder = client.get_node(f"ns={idx};s=Machines") 
+            machine_nodes = machines_folder.get_children()
+            ...
