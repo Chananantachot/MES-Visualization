@@ -6,7 +6,7 @@
     - Stores live machine/sensor data
     - Exposes data via standard OPC UA protocol
 
-    ```code 
+    ```bash
     from opcua import Server
     # Initialize MES and OPC UA Server
     mes_instance = mes()
