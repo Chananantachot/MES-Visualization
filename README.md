@@ -61,13 +61,13 @@ It is perfect for engineers, students, or anyone interested in MES/OT/IT systems
 2. on your termianl -> follow instructions of this link https://flask.palletsprojects.com/en/stable/installation/#create-an-environment
    or if you have it run
    ```bash
-      . .venv/bin/activate
+   . .venv/bin/activate
    
 3.  ```bash
     pip install -r requirements.txt
     
 4.  ```bash
-     flask --app app run --debug & python3 server.py
+    flask --app app run --debug & python3 server.py
 
 
 
