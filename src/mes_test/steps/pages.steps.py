@@ -1,23 +1,25 @@
 from behave import given, when, then
 import requests
+from app import app
 
-@given('login form endpoint is "{endpoint}"')
-def step_impl(context, endpoint):
-    context.endpoint = endpoint
-
-@when("submit the login form using POST")
-def step_impl(context):
-    context.response = requests.post(context.endpoint, data=context.form_data)
 
 @when('i make a request to "{endpoint}"')
 def step_impl(context, endpoint):
     context.response = requests.get(endpoint)
    
-@then("page response status code should be {status_code:d}")
-def step_impl(context, status_code):
-    assert context.response.status_code == status_code
+@when('I make a request to "{endpoint}" API endpoint')
+def step_impl(context, endpoint):
+    context.client = app.test_client()
+    context.response = context.client.get(endpoint, headers={"Accept": "application/json"})
 
-@then('page response body should contain "{text}"')
-def step_impl(context, text):
-    assert text in context.response.text  
+@then('I should receive json data back')
+def step_impl(context):
+    print(f"Expected status code 200, but got {context.response.status_code}")
+    assert context.response.status_code == 200, f"Expected status code 200, but got {context.response.status_code}"
+    assert context.response.headers['Content-Type'] == 'application/json', f"Expected JSON response, but got {context.response.headers['Content-Type']}" 
+    assert "labels" in context.response.json   # Ensure the response contains 'labels'    
+    assert "datasets" in context.response.json    
+    assert len(context.response.json["datasets"]) > 0
 
+    print(f"Response JSON: {context.response.json()}")
+    

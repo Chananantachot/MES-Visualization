@@ -8,6 +8,7 @@ Feature: MES Login page
   Scenario: Check if do Submit un-registered login user to login page works
     Given the form endpoint is "/signin"
     And the following form data:
+        | field | value |
         | email | invalid_user@mail.com |
         | password | secret123 |
     When I submit the form using POST    
@@ -18,6 +19,7 @@ Feature: MES Login page
   Scenario: Check if do Submit registered login user to login page works
     Given the form endpoint is "/signin"
     And the following form data:
+          | field | value |
           | email | scott@mail.com |
           | password | hakxoz-7boFba-fynhyd |
     When I submit the form using POST    

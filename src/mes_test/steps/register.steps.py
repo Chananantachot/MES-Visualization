@@ -7,35 +7,21 @@ from app import app
 def step_impl(context):
     context.client = app.test_client()
 
-@when('I request the "/register" endpoint')
-def step_impl(context):
-    context.response = context.client.get("/signin")
+@when('I request the "{endpoint}" endpoint')
+def step_impl(context,endpoint):
+    context.response = context.client.get(endpoint)
 
-@then('I should receive "Register account"')
-def step_impl(context):
-    assert "Sign in to continue to Fake it easy" in context.response.get_data(as_text=True)
+@then('I should receive "{text}"')
+def step_impl(context,text):
+    assert text in context.response.get_data(as_text=True)
 
-@given('the register form endpoint is "{endpoint}"')
-def step_impl(context, endpoint):
-    context.endpoint = endpoint
+@then('the register response status code should be {status_code:d}')
+def step_impl(context, status_code):
+    print(f"Response status code: {context.response.status_code} == {status_code}")
     
-@when("I submit the register form using POST")
-def step_impl(context):
-    context.response = requests.post(context.endpoint, data=context.form_data)
-
-@then("the register response status code should be {status_code:d}")
-def step_impl(context, status_code):
     assert context.response.status_code == status_code
 
-@then('the register response body should contain "{text}"')
-def step_impl(context, text):
-    assert text in context.response.text
-
-@then("the register response status code should be {status_code:d}")
-def step_impl(context, status_code):
-    assert context.response.status_code == status_code
-
-@then('the register response body should contain "{text}" and "{field_name}" value in hidden field')
+@then('the response body should contain "{text}" and "{field_name}" value in hidden field')
 def step_impl(context, text, field_name):
     html = context.response.text
     assert text in html, f"Expected text '{text}' not found in the response" 

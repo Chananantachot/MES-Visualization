@@ -71,7 +71,7 @@ def register():
     password = request.form['password']
    
     if not fullname or not email or not password:
-        return redirect(url_for('users.newUser', error="Please fill in all fields."))
+        return redirect(url_for('users.newUser', error="Please fill in all fields."),200)
 
     user = authDb.getCurrentUser(email)
     if not user:
@@ -87,11 +87,11 @@ def register():
 def activateUser():
     userid = request.form['userid']
     if not userid:
-        return redirect(url_for('users.newUser', error="Sorry, We can't find this user in the system."))
+        return redirect(url_for('users.newUser', error="Sorry, We can't find this user in the system."),200)
 
     user = authDb.getCurrentUser(userid)
     if not user:
-        return redirect(url_for('users.newUser', error="User not found."))
+        return redirect(url_for('users.newUser', error="User not found."), 200)
 
     authDb.activeUser(userid)
     return redirect(url_for('users.login'))

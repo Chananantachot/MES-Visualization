@@ -1,18 +1,6 @@
 from behave import given, when, then
 import requests
 
-@given('the login form endpoint is "{endpoint}"')
-def step_impl(context, endpoint):
-    context.endpoint = endpoint
-
-@when("I submit the login form using POST")
-def step_impl(context):
-    context.response = requests.post(context.endpoint, data=context.form_data)
-
-@then('the response should contain a "Set-Cookie" header')
-def step_impl(context):
-    assert "Set-Cookie" in context.response.headers
-
 @then('the cookie "access_token_cookie" should be set expried')
 def step_impl(context):
     cookie = context.response.cookies.get("access_token_cookie")
@@ -29,13 +17,12 @@ def step_impl(context,access_token_cookie):
     assert access_token_cookie in cookies.keys()
     assert cookies[access_token_cookie] is not None
 
-
 @when('I send a POST request to "/logout"')
 def send_logout_request(context):
     logout_endpoint = context.endpoint.replace("signin", "logout")
     context.response = requests.post(logout_endpoint, cookies=context.response.cookies)
 
-@then(u'the response should not contain the "{access_token_cookie}" cookie')
+@then('the response should not contain the "{access_token_cookie}" cookie')
 def step_impl(context, access_token_cookie):
     assert access_token_cookie not in context.response.cookies.keys()
     
