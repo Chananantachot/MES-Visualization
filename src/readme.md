@@ -6,7 +6,6 @@
     - Stores live machine/sensor data
     - Exposes data via standard OPC UA protocol
 
-     ```
         from opcua import Server
         # Initialize MES and OPC UA Server
         mes_instance = mes()
@@ -19,10 +18,10 @@
         objects = server.get_objects_node()
         uri = "http://examples.freeopcua.github.io"
         idx = server.register_namespace(uri)
-        ....
     
         # Create folders
         products_folder = objects.add_folder(f"ns={idx};s=Products", "Products")
+        ...
 
 #⬅️➡️ OPC UA Client
     - Fetches or monitors data from the OPC UA server
@@ -32,7 +31,6 @@
     - Visualizes real-time & historical data
     - Adds analytics like anomaly detection, predictions, etc.
 
-    ```
      client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:    
             client.connect()
