@@ -2,7 +2,7 @@ Feature: JWT Authentication
 
   Scenario: User logs in and receives JWT token in cookies
     Given the login form endpoint is "/signin"
-    And the following form user data:
+    And the following form data:
           | email | someone@mail.com |
           | password | qubxo5-saqwyp-wusMej |
     When I submit the login form using POST

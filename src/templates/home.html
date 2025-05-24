@@ -16,15 +16,6 @@
 <p>This analysis predicts the failure risk for each machine based on temperature, vibration, and uptime.</p>
 {{ machine_health_table|safe }}
 
-<hr />
-<h2>Production Slowdown Analysis</h2>
-<p>This analysis compares actual vs. predicted production rates and identifies slowdown factors.</p>
-{{ production_slowdown_table|safe }}
-
-<hr />
-<h2>Sensor Anomaly Detection</h2>
-<p>This analysis flags sensors with abnormal readings using an Isolation Forest.</p>
-{{ sensor_anomaly_table|safe }}
 {% endblock %}
 {% block scripts %}
 <script>

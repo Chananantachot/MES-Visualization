@@ -19,12 +19,6 @@ def step_impl(context):
 def step_impl(context, endpoint):
     context.endpoint = endpoint
     
-@given(u'the following register form data:')
-def step_impl(context):
-    context.form_data = {}
-    for row in context.table:
-        context.form_data[row['name']] = row[row['name']]
-
 @when("I submit the register form using POST")
 def step_impl(context):
     context.response = requests.post(context.endpoint, data=context.form_data)

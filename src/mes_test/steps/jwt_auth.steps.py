@@ -5,12 +5,6 @@ import requests
 def step_impl(context, endpoint):
     context.endpoint = endpoint
 
-@given(u'the following form user data:')
-def step_impl(context):
-    context.form_data = {}
-    for row in context.table:
-        context.form_data[row['name']] = row[row['name']]    
-
 @when("I submit the login form using POST")
 def step_impl(context):
     context.response = requests.post(context.endpoint, data=context.form_data)

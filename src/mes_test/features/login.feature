@@ -18,8 +18,8 @@ Feature: MES Login page
   Scenario: Check if do Submit registered login user to login page works
     Given the form endpoint is "/signin"
     And the following form data:
-          | email | someone@mail.com |
-          | password | qubxo5-saqwyp-wusMej |
+          | email | scott@mail.com |
+          | password | hakxoz-7boFba-fynhyd |
     When I submit the form using POST    
     Then the response status code should be 200
     And the response body should contain "Welcome to Manufacturing Execution System (MES) Simulation"  

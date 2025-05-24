@@ -1,5 +1,9 @@
+import os
+import sys
 from behave import given, when, then
 import requests
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from app import app
 
 @given("the MES Login app is running")
@@ -35,3 +39,4 @@ def step_impl(context, status_code):
 @then('the response body should contain "{text}"')
 def step_impl(context, text):
     assert text in context.response.text    
+

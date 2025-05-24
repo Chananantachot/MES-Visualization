@@ -7,7 +7,7 @@ Feature: MES Register page
 
   Scenario: Check if do Submit valid user to register page works
     Given the register form endpoint is "/register"
-    And the following register form data:
+    And the following form data:
           | fullname | tester testing |
           | email    | test@mail.com |
           | password | qubxo8-xaqwyp-wusMej |
@@ -17,7 +17,7 @@ Feature: MES Register page
 
   Scenario: Check if do Submit empty user to register page works
       Given the register form endpoint is "/register"
-      And the following register form data:
+      And the following form data:
             | fullname |  |
             | email    |  |
             | password |  |
@@ -27,7 +27,7 @@ Feature: MES Register page
 
   Scenario: Check if do Submit existing user to register page works
     Given the register form endpoint is "/register"
-    And the following register form data:
+    And the following form data:
           | fullname | tester2 existing |
           | email    | test@mail.com |
           | password | qubxo8-xaqwyp-wusMej |

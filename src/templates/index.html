@@ -5,10 +5,14 @@
 {% block content %}
 <h1>Visualization of MES Production Rate Simulation</h1>
 <canvas id="myChart"></canvas>
+
+<h2>Production Slowdown Analysis</h2>
+<p>This analysis compares actual vs. predicted production rates and identifies slowdown factors.</p>
+{{ table_html|safe }}
 {% endblock %}
 {% block scripts %}
 <script>
   updateChart()
-  setInterval(updateChart, 5000);
+ // setInterval(updateChart, 5000);
 </script>
 {% endblock %}
