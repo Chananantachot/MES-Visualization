@@ -44,7 +44,7 @@ motor_speed = motor.add_variable(idx, "MotorSpeeds", mes_instance.motor_speed)
 motor_speed.set_writable()
 
 # Create Sensor objects and variables
-for i in range(1, 4):
+for i in range(0, 3):
     sensor = sensors_folder.add_object(f"ns={idx};s=Sensor{i}", f"Sensor{i}")
     sensor_temperature = sensor.add_variable(idx, "Temperatures", mes_instance.sensor_temperatures)
     sensor_temperature.set_writable()
@@ -67,30 +67,26 @@ for i in range(1, 4):
     # sensor_signal_loss.set_writable()
 
 # Create Product objects and variables
-data_path = os.path.join("static", "data", "MOCK_DATA.json")
-with open(data_path, "r") as f:
-    data = json.load(f)
-    unique_products = {}
-    for item in data:
-        pname = item['product_name']
-        if pname not in unique_products:
-            unique_products[pname] = item
-    for item in unique_products.values():
-        product = products_folder.add_object(idx, item['product_name'])
-        product_rate = product.add_variable(idx, "ProductRate", item['productRate'])
-        product_rate.set_writable()
+products = mes.load_products()
+for i,item in enumerate(products):
+    print(f"Adding Product {i+1}: {item['product_name']}")
+    product = products_folder.add_object(f"ns={idx};s=Product{i}", f"Product{i}")
+    product_name = product.add_variable(idx, "ProductName", item['product_name'])
+    product_name.set_writable()
+    product_rate = product.add_variable(idx, "ProductRate", item['productRate'])
+    product_rate.set_writable()
 
-        product_shift = product.add_variable(idx, "Shift", mes_instance.production_shift)
-        product_shift.set_writable()
+    product_shift = product.add_variable(idx, "Shift", mes_instance.production_shift)
+    product_shift.set_writable()
 
-        product_temperature = product.add_variable(idx, "Temperature", mes_instance.production_temperature)
-        product_temperature.set_writable()
+    product_temperature = product.add_variable(idx, "Temperature", mes_instance.production_temperature)
+    product_temperature.set_writable()
 
-        product_humidity = product.add_variable(idx, "Humidity", mes_instance.production_humidity)
-        product_humidity.set_writable()
+    product_humidity = product.add_variable(idx, "Humidity", mes_instance.production_humidity)
+    product_humidity.set_writable()
 
-        product_vibration = product.add_variable(idx, "Vibration", mes_instance.production_vibration)
-        product_vibration.set_writable()
+    product_vibration = product.add_variable(idx, "Vibration", mes_instance.production_vibration)
+    product_vibration.set_writable()
 try:
     print("Server started. You can connect to opc.tcp://0.0.0.0:4840/server/")
     print("Press Ctrl+C to stop the server...\n")

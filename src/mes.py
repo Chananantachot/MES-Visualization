@@ -1,3 +1,5 @@
+import json
+import os
 import random
 import numpy as np
 
@@ -29,5 +31,20 @@ class mes:
         mean, std, tail = random.uniform(200, 700), random.uniform(20, 50), [200, 300]
         signal_data = np.random.normal(mean, std, 980)
         signal_data = np.append(signal_data, tail)
-        return signal_data.tolist() 
-      
+        signal_data = np.array(signal_data, dtype=float).flatten()
+        signal_data = [round(float(x), 2) for x in signal_data]
+        return signal_data
+
+    @staticmethod
+    def load_products():
+        data_path = os.path.join("static", "data", "MOCK_DATA.json")
+        with open(data_path, "r") as f:
+            _data = json.load(f)
+            unique_products = []
+            products = []
+            for _item in _data:
+                pname = _item['product_name'].strip().lower()
+                if pname not in unique_products:
+                    unique_products.append(pname)
+                    products.append(_item)
+        return products  

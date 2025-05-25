@@ -1,7 +1,10 @@
 import random
 import os
 from dotenv import load_dotenv
+from sklearn.calibration import LabelEncoder
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
+
+from mes import mes
 load_dotenv()
 
 from authDb import authDb
@@ -12,7 +15,7 @@ import pandas as pd
 import matplotlib
 
 from flask import (
-    Flask, make_response, url_for, render_template, jsonify,
+    Flask, json, make_response, url_for, render_template, jsonify,
     request, redirect, g
 )
 from flask_jwt_extended import (
@@ -60,6 +63,7 @@ def before_request():
         return redirect(url_for('users.login', next=request.url))
     
 @app.route("/")
+@app.route("/machines/health")
 @jwt_required()
 def homepage():  
     current_user = get_jwt_identity() 
@@ -103,10 +107,21 @@ def homepage():
     data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
     machine_data = data.to_dict()
-    table_html = data.to_html(classes='table table-sm', index=False)
-    return render_template('home.html', 
-                        machine_health_table=table_html,
-                        machine_data = machine_data, current_user = current_user)
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        datas = []
+        for i, machine in enumerate(machine_data):
+            m = {
+                'machineID': machine_data['MachineID'][i],
+                'temperature': machine_data['Temperature'][i],
+                'vibration': machine_data['Vibration'][i],
+                'uptime': machine_data['Uptime'][i],
+                'failureRisk': machine_data['Failure_Risk'][i],
+                'riskProbability': machine_data['Risk_Probability'][i]
+            }
+            datas.append(m)   
+        return jsonify(datas)
+    else:
+        return render_template('home.html',current_user = current_user)
 
 @app.route("/productionRates")
 @jwt_required()
@@ -120,45 +135,58 @@ def productionRates():
         product_nodes = products_folder.get_children()
         labels = []
         data = []
+        products = []  # Load products from the MES
         df = pd.DataFrame()
-        for product in product_nodes:
-            labels.append(product.get_browse_name().Name)
+        for i,product in enumerate(product_nodes):
+            if i >= len(product_nodes):  # Limit to first 10 products   
+                break
+
+            product_name = product.get_child([f"{idx}:ProductName"])
+            product_name_value = product_name.get_value()
+            labels.append(product_name_value)           
             rate_node = product.get_child([f"{idx}:ProductRate"]) 
             rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
             data.append((rate_value))
-
+           
             shift_node = product.get_child([f"{idx}:Shift"]) 
-            shift_value = shift_node.get_value()
-            humidity_node = product.get_child([f"{idx}:Humidity"])
-            humidity_value = humidity_node.get_value()
+            shift_value = [int(v) for v in shift_node.get_value()] 
+            humidity_node =  product.get_child([f"{idx}:Humidity"])
+            humidity_value = [float(v) for v in humidity_node.get_value()] 
             temperature_node = product.get_child([f"{idx}:Temperature"])
-            temperature_value = temperature_node.get_value()
+            temperature_value = [float(v) for v in temperature_node.get_value()]  
             vibration_node = product.get_child([f"{idx}:Vibration"])
-            vibration_value = vibration_node.get_value()
+            vibration_value = [float(v) for v in vibration_node.get_value()] 
 
-            df['shift'] = shift_value
-            df['temperature'] = temperature_value
-            df['humidity'] = humidity_value
-            df['vibration'] = vibration_value
-    
-            df['Actual_Rate'] = (
-                100 
-                - (df['temperature'] * 0.5 + df['humidity'] * 0.2 + df['shift'] * 2) 
-                + np.random.normal(0, 5, len(df))  # Match noise to DataFrame size
+            actual_rate = (
+                100
+                - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift_value[random.randint(0,9)] * 2)
+                + np.random.normal(0, 5)
             )
+
+            products.append({
+                'name': product_name_value,
+                'rate': rate_value,
+                'shift': shift_value,
+                'temperature': temperature_value,
+                'humidity': humidity_value,
+                'vibration': vibration_value,
+                'actualRate': actual_rate, 
+                'Predicted_Rate': 0, 
+                'Temp_Impact': '',  # Placeholder for temperature impact
+                'Shift_Impact': '',  # Placeholder for shift impact
+                'Humidity_Impact': ''  # Placeholder for humidity impact
+                  # Placeholder for predicted rate
+            })
+        df = pd.DataFrame(products)    
     finally:        
         client.disconnect()
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        dataset = jsonify({
-            'labels': labels,
-            'data': data
-        })
-        return dataset
-    else:    
-      
+        for col in ['shift', 'temperature', 'humidity']:
+            df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
+
         X = df[['shift', 'temperature', 'humidity']]
-        y = df['Actual_Rate']
+        y = df['actualRate']
         model = LinearRegression().fit(X, y)
         df['Predicted_Rate'] = model.predict(X)
 
@@ -168,7 +196,7 @@ def productionRates():
         df['Temp_Impact']     = df['temperature']  * coefs[1]
         df['Humidity_Impact'] = df['humidity'] * coefs[2]  
         df['Intercept'] = intercept
-      
+        
         def categorize(v):
             if -1 <= v <= 1:
                 return 'Low'
@@ -180,38 +208,32 @@ def productionRates():
         for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
             df[f'{feat}_Cat'] = df[feat].apply(categorize)
             del df[feat]
-            df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')
-        
-        # Summary counts
-        # summary = {
-        #     feat: df[f'{feat}'].value_counts().to_dict()
-        #     for feat in ('Shift Impact', 'Temp Impact', 'Humidity Impact')
-        # }
-
-        # Inline‐style mapping for categories
-        def style_cat(cell_value):
-            if cell_value == 'High':
-                return 'background-color: lightcoral;'
-            elif cell_value == 'Medium':
-                return 'background-color: yellow;'
-            else:  # Low
-                return 'background-color: lightgreen;'
-
-        # Build Styler and output HTML
-        styler = (
-            df.style
-                .applymap(style_cat, subset=[
-                    'Shift Impact',
-                    'Temp Impact',
-                    'Humidity Impact'
-                ])
-                .set_table_attributes('class="table table-small"')
-                .format(precision=2)
-        )
-        del df['shift']
-        table_html = styler.to_html()
+            df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
+        # Prepare data for JSON response
+        productions = []
+        for i, production in enumerate(df):
+            production = {
+                'name': df['name'][i],
+                'temperature': float(df['temperature'][i].round(2)),
+                'humidity': float(df['humidity'][i].round(2)),
+                # 'vibration': df['vibration'][i],
+                'actualRate': float(df['actualRate'][i].round(2)),
+                'predictedRate': float(df['Predicted_Rate'][i].round(2)),
+                'shiftImpact': df['Shift Impact'][i],
+                'tempImpact': df['Temp Impact'][i],
+                'humidityImpact': df['Humidity Impact'][i]
+            }
+            productions.append(production)
+        # Return JSON for charting
+        dataset = jsonify({
+            'labels': labels,
+            'data': data,
+            'productions': productions
+        })
+        return dataset
+    else:        
         current_user = get_jwt_identity() 
-        return render_template('index.html',table_html=table_html, current_user = current_user)
+        return render_template('index.html',current_user = current_user)
 
 @app.route("/iotDevices")
 @jwt_required()
@@ -283,6 +305,7 @@ def motorSpeed():
 @jwt_required()
 def senser():
     datasets = []
+
     client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:
         client.connect()
@@ -296,7 +319,7 @@ def senser():
             signals = signal_node.get_value()
 
             df[f'Senser {j+1}'] = signals
-            df[f'Senser {j+1}'] = df[f'Senser {j+1}'].apply(lambda x: x + values[j] * 10)
+            df[f'Senser {j+1}'] = df[f'Senser {j+1}'].apply(lambda x: round(float(x + values[j] * 10), 2))
 
             data = []
             for i, value in enumerate(signals):
@@ -310,19 +333,28 @@ def senser():
                 'radius': 0,
                 'data': data
             }) 
-
+           
         sensor_data = df.copy()
     
         model = IsolationForest(contamination=0.1).fit(sensor_data)
         df['Anomaly Score'] = model.decision_function(sensor_data)
-        df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'})
-
+        df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'}).tolist()
+        #df['name'] = f"Senser {j+1}"
+        df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
+        
+        sensors = df.to_dict(orient='records')
+            
+        # Convert DataFrame to HTML table
         table_html = df.to_html(classes='table table-sm', index=False)
     finally:
         client.disconnect()
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        return jsonify(datasets)
+        josn = {
+            'datasets': datasets,
+            'data': sensors
+        }
+        return jsonify(josn)
     else: 
         access_token = request.cookies.get('access_token_cookie')
         if not access_token:
@@ -344,4 +376,4 @@ def missing_token_callback(err):
     return response, 401
 
 if __name__ == '__main__':
-   app.run(debug=True, host='0.0.0.0', port=5001)
+   app.run(ssl_context="adhoc", host='0.0.0.0' , port=5000)  # Use SSL context for HTTPS
