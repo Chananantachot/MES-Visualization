@@ -53,8 +53,6 @@ async function fetchData(url) {
 
 async function updateChart() {
     var data = await fetchData('/productionRates');
-
-    loadProductionRates(data.productions);
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets[0].data = data.data;
@@ -62,36 +60,6 @@ async function updateChart() {
     var pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
     _myChart.data.datasets[0].pointBackgroundColor = pointColors;
     _myChart.update();
-}
-
-function loadProductionRates(data) {
-    $("#productionTable").jqGrid({
-        colModel: [
-            { label: 'Production', name: 'name', width: 250 },
-            // { label: 'Shift', name: 'shift', width: 150 },
-            { label: 'Temperature', name: 'temperature', width: 100 },
-            { label: 'Humidity', name: 'humidity', width: 100 },
-            // { label: 'Vibration', name: 'vibration', width: 150 },
-            { label: 'Rate', name: 'actualRate', width: 100 },
-            { label: 'Predicted Rate', name: 'predictedRate', width: 150 },
-            { label: 'Shift Impact', name: 'shiftImpact', width: 100 },
-            { label: 'Tempe Impact', name: 'tempImpact', width: 100 },
-            { label: 'Humidity Impact', name: 'humidityImpact', width: 100 }
-        ],
-
-        data: data,
-        viewrecords: true,
-        searching: {
-            defaultSearch: "cn"
-        },
-        guiStyle: "bootstrap",
-        iconSet: "fontAwesome",
-        idPrefix: "gb1_",
-        rownumbers: true,
-        sortname: "invdate",
-        sortorder: "desc",
-        caption: "Production Rates Prediction"
-    }).jqGrid("filterToolbar");
 }
 
 async function updateMotorSpeedChart() {
@@ -105,8 +73,6 @@ async function updateMotorSpeedChart() {
 async function updateSensersChart() {
     var json = await fetchData('/senser');
     var datasets = json.datasets;
-    console.log('Sensers Data:', json.data);
-    loadSensorData(json.data);
     const totalDuration = 10000;
 
     const delayBetweenPoints = totalDuration / datasets[1].data.length;
@@ -162,66 +128,50 @@ async function updateSensersChart() {
     });
 }
 
-function loadSensorData(data) {
-    $("#sensersTable").jqGrid({
-        colModel: [
-            //signal
-            { name: 'Senser 1', label: 'Sensor 1', width: 150 },
-            { name: 'Senser 2', label: 'Sensor 2', width: 150 },
-            { name: 'Senser 3', label: 'Sensor 3', width: 150 },
-            { name: 'Anomaly Score', label: 'Score', width: 100 },
-            { name: 'Anomaly Flag', label: 'Flag', width: 100 }
-        ],
+function loadProductionRates() {
+    var colModel= [
+            { label: 'Production', name: 'name', width: 250 },
+            { label: 'Temperature', name: 'temperature', width: 100 },
+            { label: 'Humidity', name: 'humidity', width: 100 },
+            { label: 'Rate', name: 'actualRate', width: 100 },
+            { label: 'Predicted Rate', name: 'predictedRate', width: 150 },
+            { label: 'Shift Impact', name: 'shiftImpact', width: 100 },
+            { label: 'Tempe Impact', name: 'tempImpact', width: 100 },
+            { label: 'Humidity Impact', name: 'humidityImpact', width: 100 }
+        ]
+    InitializejqGrid("#productionTable","Production Rates Prediction", colModel ,"/productionRates/data","/productionRates/download_csv", "productionRate.csv")    
+}
 
-        data: data,
-        viewrecords: true,
-        searching: {
-            defaultSearch: "cn"
-        },
-        guiStyle: "bootstrap",
-        iconSet: "fontAwesome",
-        idPrefix: "gb1_",
-        rownumbers: true,
-        pager: true,
-        rowNum: 15,
-        sortname: "invdate",
-        sortorder: "desc",
-        caption: "Factor on sensor signal loss"
-    }).jqGrid("filterToolbar");
+function loadMotorSpeedData() {
+    var colModel = [
+        { label: 'Temperature (°C)', name: 'temperature', width: 150 },
+        { label: 'Actual Speed (RPM)', name: 'actureSpeed', width: 150 },
+        { label: 'Predicted Speed (RPM)', name: 'predictedSpeed', width: 150 }
+    ]
+    InitializejqGrid("#motorTable","Motor Speed vs Temperature",colModel,"/motor/data", "/motor/download_csv", "motor_data.csv")
+}
+
+function loadSensorData() {
+    var colModel =[
+        { name: 'Senser 1', label: 'Sensor 1', width: 150 },
+        { name: 'Senser 2', label: 'Sensor 2', width: 150 },
+        { name: 'Senser 3', label: 'Sensor 3', width: 150 },
+        { name: 'Anomaly Score', label: 'Score', width: 100 },
+        { name: 'Anomaly Flag', label: 'Flag', width: 100 }
+    ]
+    InitializejqGrid("#sensersTable","Factor on sensor signal loss",colModel,"/senser/data", "/senser/download_csv", "senser_data.csv")
 }
 
 function loadMachineHelth() {
-    var endpoint = "/machines/health"; // Adjust this endpoint as needed
-    $(function () {
-        var data = fetch(endpoint)
-            .then(response => response.json())
-            .then(data => {
-                console.log('Machine Health Data:', data);
-                $("#machineTable").jqGrid({
-                    colModel: [
-                        { label: 'Machine ID', name: 'machineID', width: 80 },
-                        { label: 'Temperature', name: 'temperature', width: 150 },
-                        { label: 'Vibration', name: 'vibration', width: 150 },
-                        { label: 'Uptime', name: 'uptime', width: 150 },
-                        { label: 'Risk Probability', name: 'riskProbability', width: 150 },
-                        { label: 'Failure Risk', name: 'failureRisk', width: 100, classes: 'text-center' }
-                    ],
-                    data: data,
-                    viewrecords: true,
-                    searching: {
-                        defaultSearch: "cn"
-                    },
-                    guiStyle: "bootstrap",
-                    iconSet: "fontAwesome",
-                    idPrefix: "gb1_",
-                    rownumbers: true,
-                    sortname: "invdate",
-                    sortorder: "desc",
-                    caption: "Machine Health Prediction"
-                }).jqGrid("filterToolbar");
-            })
-            .catch(error => console.error('Error fetching machine health data:', error));
-    });
+    var colModel = [
+        { label: 'Machine ID', name: 'machineID', width: 80 },
+        { label: 'Temperature', name: 'temperature', width: 150 },
+        { label: 'Vibration', name: 'vibration', width: 150 },
+        { label: 'Uptime', name: 'uptime', width: 150 },
+        { label: 'Risk Probability', name: 'riskProbability', width: 150 },
+        { label: 'Failure Risk', name: 'failureRisk', width: 100, classes: 'text-center' }
+    ]
+     InitializejqGrid("#machineTable","Machine Health Prediction",colModel,"/machines/health", "/machines/download_csv", "machinesHealth_data.csv")
 }
 
 $(document).ready(function () {
@@ -233,5 +183,74 @@ $(document).ready(function () {
         else $(this).find('span').html('&#x25BC;')
     })
 });
+
+function InitializejqGrid(tableid = '', caption = '', colModels = [],  url_endpoint = '', download_url = '', filename = '' ) {
+    $(tableid).jqGrid({
+        url: url_endpoint,
+        datatype: "json",
+        colModel: colModels,
+        decimalSeparator: ".",
+        viewrecords: true,
+        searching: {
+            defaultSearch: "cn"
+        },
+        guiStyle: "bootstrap",
+        iconSet: "fontAwesome",
+        idPrefix: "gb1_",
+        rownumbers: true,
+        pager: "#gridpager",
+        // pager: true,
+        rowNum: 15,        
+        sortname: "invdate",
+        sortorder: "desc",
+        caption: caption
+    }).jqGrid("filterToolbar");
+
+    addDownloadCSVBttonTojqGrid(tableid, download_url,filename)
+}
+
+function addDownloadCSVBttonTojqGrid(tableId, downloadUrl , filename){
+    $(tableId).navGrid('#gridpager', {
+        edit: false,
+        add: false,
+        del: false,
+        search: false,
+        refresh: false,
+        view: false,
+        position: "left",
+        cloneToTop: true
+    }, {}, // edit options
+    {}, // add options
+    {}, // delete options
+    {} // search options
+);    
+    // add Export button
+$(tableId).navButtonAdd('#gridpager', {
+    buttonicon: "ui-icon-circle-triangle-e",
+    title: "Export to CSV",
+    caption: "Export to CSV",
+    position: "last",
+    onClickButton: function() {
+      fetch(downloadUrl)
+        .then(response => response.text())
+        .then(csvText => {
+          downloadCSV(csvText, filename);
+        })
+        .catch(err => alert('Failed to download CSV: ' + err));
+    }
+});
+}
+
+function downloadCSV(csvString, filename) {
+      const blob = new Blob([csvString], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename || 'data.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 
 document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));

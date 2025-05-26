@@ -13,6 +13,7 @@
 <p>This analysis compares actual vs. predicted production rates and identifies slowdown factors.</p>
 <table id="productionTable" class="table table-striped table-bordered">
 </table> 
+<div id="gridpager"></div>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
@@ -21,7 +22,7 @@
 <script>
   "use strict";
   updateChart()
- // loadProductionRates()
+  loadProductionRates()
  // setInterval(updateChart, 5000);
 </script>
 {% endblock %}

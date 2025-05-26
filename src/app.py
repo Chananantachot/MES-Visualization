@@ -15,7 +15,7 @@ import pandas as pd
 import matplotlib
 
 from flask import (
-    Flask, json, make_response, url_for, render_template, jsonify,
+    Flask, Response, json, make_response, url_for, render_template, jsonify,
     request, redirect, g
 )
 from flask_jwt_extended import (
@@ -64,6 +64,7 @@ def before_request():
     
 @app.route("/")
 @app.route("/machines/health")
+@app.route('/machines/download_csv')
 @jwt_required()
 def homepage():  
     current_user = get_jwt_identity() 
@@ -119,11 +120,23 @@ def homepage():
                 'riskProbability': machine_data['Risk_Probability'][i]
             }
             datas.append(m)   
-        return jsonify(datas)
+        if request.path == '/machines/download_csv':
+            csv_data = data.to_csv(index=False)
+            print(csv_data)
+            # Create a Response with CSV mime type and attachment header
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={"Content-disposition":
+                        "attachment; filename=senser_data.csv"})
+        else:  #request.path == '/machines/health':
+            return jsonify(datas)    
     else:
         return render_template('home.html',current_user = current_user)
 
 @app.route("/productionRates")
+@app.route('/productionRates/data')
+@app.route('/productionRates/download_csv')
 @jwt_required()
 def productionRates():
     # Connect to the OPC UA server
@@ -224,13 +237,25 @@ def productionRates():
                 'humidityImpact': df['Humidity Impact'][i]
             }
             productions.append(production)
-        # Return JSON for charting
-        dataset = jsonify({
-            'labels': labels,
-            'data': data,
-            'productions': productions
-        })
-        return dataset
+
+        if request.path == '/productionRates/download_csv':
+            csv_data = df.to_csv(index=False)
+            print(csv_data)
+            # Create a Response with CSV mime type and attachment header
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={"Content-disposition":
+                        "attachment; filename=motor_data.csv"})
+        elif request.path == '/productionRates/data':
+            return jsonify(productions)
+        else:    
+            # Return JSON for charting
+            dataset = jsonify({
+                'labels': labels,
+                'data': data
+            })
+            return dataset
     else:        
         current_user = get_jwt_identity() 
         return render_template('index.html',current_user = current_user)
@@ -242,6 +267,8 @@ def iotDevices():
     return render_template('iotDevices.html', current_user = current_user)
 
 @app.route("/motor")
+@app.route('/motor/data')
+@app.route('/motor/download_csv')
 @jwt_required()
 def motorSpeed():
      # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
@@ -263,10 +290,32 @@ def motorSpeed():
     model = LinearRegression()
     model.fit(X, y)
     predicted_speed = model.predict(X)
+    model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
+    r2 = r2_score(y, predicted_speed)
+    r2_text = f"Model Accuracy (R²): {r2:.3f}"
 
+    data_table = pd.DataFrame({
+        'temperature': np.round(np.array(temperatures).flatten(), 2).astype(float),
+        'actureSpeed': np.array(motor_speeds).flatten(),
+        'predictedSpeed': np.round(np.array(predicted_speed).flatten(), 2).astype(float)
+    })
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         # Return JSON for charting
-        return jsonify({
+        motor_speeds_data = data_table.to_dict(orient='records')
+        
+        if request.path == '/motor/download_csv':
+            csv_data = data_table.to_csv(index=False)
+            print(csv_data)
+            # Create a Response with CSV mime type and attachment header
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={"Content-disposition":
+                        "attachment; filename=motor_data.csv"})
+        elif request.path == '/motor/data':
+            return jsonify(motor_speeds_data)
+        else:
+            return jsonify({
             'labels': temperatures,
             'datasets': [
                 {
@@ -281,31 +330,22 @@ def motorSpeed():
                 }
             ]
         })
+        
     else:    
-        current_user = get_jwt_identity()
-        model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
-        r2 = r2_score(y, predicted_speed)
-        r2_text = f"Model Accuracy (R²): {r2:.3f}"
-
-        data_table = pd.DataFrame({
-            'Temperature (°C)': np.array(temperatures).flatten(),
-            'Actual Speed (RPM)': np.array(motor_speeds).flatten(),
-            'Predicted Speed (RPM)': np.array(predicted_speed).flatten()
-        })
-        table_html = data_table.to_html(classes='table table-striped', index=False)
+        current_user = get_jwt_identity()  
         return render_template(
             "motorSpeed.html",
-            table=table_html,
             model_eq=model_eq,
             r2_text=r2_text,
             current_user=current_user
         )
 
 @app.route("/senser")
+@app.route('/senser/data')
+@app.route('/senser/download_csv')
 @jwt_required()
 def senser():
     datasets = []
-
     client = Client("opc.tcp://0.0.0.0:4840/server/")
     try:
         client.connect()
@@ -343,25 +383,33 @@ def senser():
         df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
         
         sensors = df.to_dict(orient='records')
-            
-        # Convert DataFrame to HTML table
-        table_html = df.to_html(classes='table table-sm', index=False)
     finally:
         client.disconnect()
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        josn = {
-            'datasets': datasets,
-            'data': sensors
-        }
-        return jsonify(josn)
+        if request.path == '/senser/download_csv':
+            csv_data = df.to_csv(index=False)
+            print(csv_data)
+            # Create a Response with CSV mime type and attachment header
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={"Content-disposition":
+                        "attachment; filename=senser_data.csv"})
+        elif request.path == '/senser/data':
+            return jsonify(sensors)
+        else:
+            josn = {
+                'datasets': datasets,
+            }
+            return jsonify(josn)
     else: 
         access_token = request.cookies.get('access_token_cookie')
         if not access_token:
             return render_template('error.html', msg= "You are not authorized to access this page.")    
         
         current_user = get_jwt_identity()   
-        return render_template('senser.html', table=table_html, current_user = current_user)
+        return render_template('senser.html',current_user = current_user)
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):

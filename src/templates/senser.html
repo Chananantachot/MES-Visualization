@@ -10,13 +10,15 @@
 <p>Below is the estimated importance of each factor on sensor signal loss:</p>
 <table id="sensersTable" class="table table-striped table-bordered"> 
 </table>
+<div id="gridpager"></div>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/free-jqgrid/4.15.5/jquery.jqgrid.min.js"></script>
 <script>
-     "use strict";
+    "use strict";
     updateSensersChart();
+    loadSensorData();
 </script>
 {% endblock %}
