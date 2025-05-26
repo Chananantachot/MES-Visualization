@@ -44,7 +44,7 @@ motor_speed = motor.add_variable(idx, "MotorSpeeds", mes_instance.motor_speed)
 motor_speed.set_writable()
 
 # Create Sensor objects and variables
-for i in range(0, 3):
+for i in range(1, 6):
     sensor = sensors_folder.add_object(f"ns={idx};s=Sensor{i}", f"Sensor{i}")
     sensor_temperature = sensor.add_variable(idx, "Temperatures", mes_instance.sensor_temperatures)
     sensor_temperature.set_writable()
@@ -54,10 +54,8 @@ for i in range(0, 3):
 
     sensor_vibration = sensor.add_variable(idx, "Vibration", mes_instance.sensor_vibration)
     sensor_vibration.set_writable()
-    sensor_signals = mes_instance.generate_signal_data()  
     
-
-    sensor_signal = sensor.add_variable(idx, "Signal", sensor_signals)
+    sensor_signal = sensor.add_variable(idx, "Signal", mes_instance.generate_signal_data())
     sensor_signal.set_writable()
     sensor_age = sensor.add_variable(idx, "Age", mes_instance.sensor_age)
 

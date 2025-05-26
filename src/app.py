@@ -352,14 +352,17 @@ def senser():
         idx = 2
         sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
         sensor_nodes = sensors_folder.get_children() 
-        values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
+        n = len(sensor_nodes)
+        values = [random.uniform(random.randint(-100,-1), random.randint(1,100)) for _ in range(n)]
+
+        #values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
         df = pd.DataFrame()
         for j, sensor in enumerate(sensor_nodes):
             signal_node = sensor.get_child([f"{idx}:Signal"]) 
             signals = signal_node.get_value()
 
-            df[f'Senser {j+1}'] = signals
-            df[f'Senser {j+1}'] = df[f'Senser {j+1}'].apply(lambda x: round(float(x + values[j] * 10), 2))
+            df[f'Senser {j}'] = signals
+            df[f'Senser {j}'] = df[f'Senser {j}'].apply(lambda x: round(float(x + values[j] * 10), 2))
 
             data = []
             for i, value in enumerate(signals):
