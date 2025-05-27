@@ -35,13 +35,14 @@ Machine_Vibrations.set_writable()
 Machine_Uptime = machine.add_variable(idx, "Machine_Uptime", mes_instance.Machine_Uptime)
 Machine_Uptime.set_writable()
 
+for i in range(1, 8):
+    print(f"Adding motor {i}....")
 # Create Motor object and variables
-motor = motors_folder.add_object(f"ns={idx};s=Motor", "Motor")
-motor_temperature = motor.add_variable(idx, "Temperatures",mes_instance.motor_temperatures)
-motor_temperature.set_writable()
-
-motor_speed = motor.add_variable(idx, "MotorSpeeds", mes_instance.motor_speed)
-motor_speed.set_writable()
+    motor = motors_folder.add_object(f"ns={idx};s=Motor{i}", f"Motor{i}")
+    motor_temperature = motor.add_variable(idx, "Temperatures",mes_instance.motor_temperatures)
+    motor_temperature.set_writable()
+    motor_speed = motor.add_variable(idx, "MotorSpeeds", mes_instance.motor_speed)
+    motor_speed.set_writable()
 
 # Create Sensor objects and variables
 for i in range(1, 6):
@@ -68,7 +69,7 @@ for i in range(1, 6):
 products = mes.load_products()
 for i,item in enumerate(products):
     print(f"Adding Product {i+1}: {item['product_name']}")
-    product = products_folder.add_object(f"ns={idx};s=Product{i}", f"Product{i}")
+    product = products_folder.add_object(f"ns={idx};s={item['product_name']}", f"{item['product_name']}")
     product_name = product.add_variable(idx, "ProductName", item['product_name'])
     product_name.set_writable()
     product_rate = product.add_variable(idx, "ProductRate", item['productRate'])

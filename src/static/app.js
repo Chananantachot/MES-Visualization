@@ -142,23 +142,47 @@ function loadProductionRates() {
     InitializejqGrid("#productionTable","Production Rates Prediction", colModel ,"/productionRates/data","/productionRates/download_csv", "productionRate.csv")    
 }
 
-function loadMotorSpeedData() {
-    var colModel = [
-        { label: 'Temperature (°C)', name: 'temperature', width: 150 },
-        { label: 'Actual Speed (RPM)', name: 'actureSpeed', width: 150 },
-        { label: 'Predicted Speed (RPM)', name: 'predictedSpeed', width: 150 }
-    ]
+async function loadMotorSpeedData() {
+    var data = await fetchData('/motor/data');
+    console.log(data)
+    let obj = data[0]
+    var colModel =[]
+    var lable = ''
+    for (const key in obj) {
+        lable = key;
+        var width = 130;
+        // if you want to check if the value is a number (float or int)
+        if (typeof obj[key] === 'number') 
+             width = 110;
+        
+        var col = {'name' : key , 'label' : lable , 'width' : width };
+        colModel.push(col);
+    }
     InitializejqGrid("#motorTable","Motor Speed vs Temperature",colModel,"/motor/data", "/motor/download_csv", "motor_data.csv")
 }
 
-function loadSensorData() {
-    var colModel =[
-        { name: 'Senser 1', label: 'Sensor 1', width: 150 },
-        { name: 'Senser 2', label: 'Sensor 2', width: 150 },
-        { name: 'Senser 3', label: 'Sensor 3', width: 150 },
-        { name: 'Anomaly Score', label: 'Score', width: 100 },
-        { name: 'Anomaly Flag', label: 'Flag', width: 100 }
-    ]
+async function loadSensorData() {
+    var data = await fetchData('/senser/data');
+    let obj = data[0]
+    var colModel =[]
+    var lable = ''
+    for (const key in obj) {
+        lable = key;
+        var width = 150;
+        // if you want to check if the value is a number (float or int)
+        if (typeof obj[key] === 'number') 
+             width = 100;
+        
+        if (key.startsWith('Senser')){
+             var c = lable.split(' ');
+             var n = parseInt(c[1]) +1;
+             lable = 'Senser ' + n.toString();    
+        }
+           
+        var col = {'name' : key , 'label' : lable , 'width' : width };
+        colModel.push(col);
+    }
+    
     InitializejqGrid("#sensersTable","Factor on sensor signal loss",colModel,"/senser/data", "/senser/download_csv", "senser_data.csv")
 }
 
@@ -184,22 +208,21 @@ $(document).ready(function () {
     })
 });
 
-function InitializejqGrid(tableid = '', caption = '', colModels = [],  url_endpoint = '', download_url = '', filename = '' ) {
+async function InitializejqGrid(tableid = '', caption = '', colModels = [],  url_endpoint = '', download_url = '', filename = '' ) {
+    var data = await fetchData(url_endpoint);
     $(tableid).jqGrid({
-        url: url_endpoint,
-        datatype: "json",
+        data : data,
         colModel: colModels,
-        decimalSeparator: ".",
         viewrecords: true,
         searching: {
-            defaultSearch: "cn"
+            defaultSearch: "bw"
         },
         guiStyle: "bootstrap",
         iconSet: "fontAwesome",
         idPrefix: "gb1_",
         rownumbers: true,
         pager: "#gridpager",
-        // pager: true,
+        //pager: true,
         rowNum: 15,        
         sortname: "invdate",
         sortorder: "desc",

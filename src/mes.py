@@ -42,9 +42,9 @@ class mes:
             _data = json.load(f)
             unique_products = []
             products = []
-            for _item in _data:
-                pname = _item['product_name'].strip().lower()
+            for _item in _data['products']:
+                pname = _item['title'].strip().lower()
                 if pname not in unique_products:
                     unique_products.append(pname)
-                    products.append(_item)
+                    products.append({ 'product_name' : pname, 'productRate': _item['price'] })
         return products  

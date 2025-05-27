@@ -1,12 +1,10 @@
 import random
 import os
 from dotenv import load_dotenv
-from sklearn.calibration import LabelEncoder
+import redis
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 
-from mes import mes
 load_dotenv()
-
 from authDb import authDb
 from users import users
 
@@ -43,6 +41,13 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(minutes=30)
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False 
 jwt = JWTManager(app)
+# Initialize Redis connection for caching
+try:
+    cache = redis.Redis(host="127.0.0.1", port=6379, db=0, decode_responses=True)
+    cache.ping()  # Test connection
+except redis.ConnectionError:
+    cache = None
+    print("Warning: Could not connect to Redis at 127.0.0.1:6379. Caching is disabled.")
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -139,107 +144,122 @@ def homepage():
 @app.route('/productionRates/download_csv')
 @jwt_required()
 def productionRates():
+    productions = cache.get('production_rates')  # Cache for 1 hour
+    dataset = cache.get('production_chart_data')
+    csv_data = cache.get("production_csv") 
+    if productions and dataset and csv_data:
+        print("Using cached data...")
+        productions = json.loads(productions)
+        dataset = json.loads(dataset)
+        csv_data = csv_data
+    else:
     # Connect to the OPC UA server
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        products_folder = client.get_node(f"ns={idx};s=Products") 
-        product_nodes = products_folder.get_children()
-        labels = []
-        data = []
-        products = []  # Load products from the MES
-        df = pd.DataFrame()
-        for i,product in enumerate(product_nodes):
-            if i >= len(product_nodes):  # Limit to first 10 products   
-                break
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:
+            client.connect()
+            idx = 2
+            products_folder = client.get_node(f"ns={idx};s=Products") 
+            product_nodes = products_folder.get_children()
+            labels = []
+            data = []
+            products = []  # Load products from the MES
+            df = pd.DataFrame()
+            for i,product in enumerate(product_nodes):
+                product_name = product.get_child([f"{idx}:ProductName"])
+                product_name_value = product_name.get_value()
+                labels.append(product_name_value)           
+                rate_node = product.get_child([f"{idx}:ProductRate"]) 
+                rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
+                data.append((rate_value))
+            
+                shift_node = product.get_child([f"{idx}:Shift"]) 
+                shift_value = [int(v) for v in shift_node.get_value()] 
+                humidity_node =  product.get_child([f"{idx}:Humidity"])
+                humidity_value = [float(v) for v in humidity_node.get_value()] 
+                temperature_node = product.get_child([f"{idx}:Temperature"])
+                temperature_value = [float(v) for v in temperature_node.get_value()]  
+                vibration_node = product.get_child([f"{idx}:Vibration"])
+                vibration_value = [float(v) for v in vibration_node.get_value()] 
 
-            product_name = product.get_child([f"{idx}:ProductName"])
-            product_name_value = product_name.get_value()
-            labels.append(product_name_value)           
-            rate_node = product.get_child([f"{idx}:ProductRate"]) 
-            rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
-            data.append((rate_value))
-           
-            shift_node = product.get_child([f"{idx}:Shift"]) 
-            shift_value = [int(v) for v in shift_node.get_value()] 
-            humidity_node =  product.get_child([f"{idx}:Humidity"])
-            humidity_value = [float(v) for v in humidity_node.get_value()] 
-            temperature_node = product.get_child([f"{idx}:Temperature"])
-            temperature_value = [float(v) for v in temperature_node.get_value()]  
-            vibration_node = product.get_child([f"{idx}:Vibration"])
-            vibration_value = [float(v) for v in vibration_node.get_value()] 
+                actual_rate = (
+                    100
+                    - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift_value[random.randint(0,9)] * 2)
+                    + np.random.normal(0, 5)
+                )
 
-            actual_rate = (
-                100
-                - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift_value[random.randint(0,9)] * 2)
-                + np.random.normal(0, 5)
-            )
+                products.append({
+                    'name': product_name_value,
+                    'rate': rate_value,
+                    'shift': shift_value,
+                    'temperature': temperature_value,
+                    'humidity': humidity_value,
+                    'vibration': vibration_value,
+                    'actualRate': actual_rate, 
+                    'Predicted_Rate': 0, 
+                    'Temp_Impact': '',  # Placeholder for temperature impact
+                    'Shift_Impact': '',  # Placeholder for shift impact
+                    'Humidity_Impact': ''  # Placeholder for humidity impact
+                    # Placeholder for predicted rate
+                })
+            df = pd.DataFrame(products)    
+        finally:        
+            client.disconnect()
 
-            products.append({
-                'name': product_name_value,
-                'rate': rate_value,
-                'shift': shift_value,
-                'temperature': temperature_value,
-                'humidity': humidity_value,
-                'vibration': vibration_value,
-                'actualRate': actual_rate, 
-                'Predicted_Rate': 0, 
-                'Temp_Impact': '',  # Placeholder for temperature impact
-                'Shift_Impact': '',  # Placeholder for shift impact
-                'Humidity_Impact': ''  # Placeholder for humidity impact
-                  # Placeholder for predicted rate
-            })
-        df = pd.DataFrame(products)    
-    finally:        
-        client.disconnect()
+            for col in ['shift', 'temperature', 'humidity']:
+                df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
 
-    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        for col in ['shift', 'temperature', 'humidity']:
-            df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
+            X = df[['shift', 'temperature', 'humidity']]
+            y = df['actualRate']
+            model = LinearRegression().fit(X, y)
+            df['Predicted_Rate'] = model.predict(X)
 
-        X = df[['shift', 'temperature', 'humidity']]
-        y = df['actualRate']
-        model = LinearRegression().fit(X, y)
-        df['Predicted_Rate'] = model.predict(X)
+            coefs = model.coef_
+            intercept = model.intercept_
+            df['Shift_Impact']    = df['shift'] * coefs[0]
+            df['Temp_Impact']     = df['temperature']  * coefs[1]
+            df['Humidity_Impact'] = df['humidity'] * coefs[2]  
+            df['Intercept'] = intercept
+            
+            def categorize(v):
+                if -1 <= v <= 1:
+                    return 'Low'
+                elif -3 <= v < -1 or 1 < v <= 3:
+                    return 'Medium'
+                else:
+                    return 'High'
 
-        coefs = model.coef_
-        intercept = model.intercept_
-        df['Shift_Impact']    = df['shift'] * coefs[0]
-        df['Temp_Impact']     = df['temperature']  * coefs[1]
-        df['Humidity_Impact'] = df['humidity'] * coefs[2]  
-        df['Intercept'] = intercept
-        
-        def categorize(v):
-            if -1 <= v <= 1:
-                return 'Low'
-            elif -3 <= v < -1 or 1 < v <= 3:
-                return 'Medium'
-            else:
-                return 'High'
-
-        for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
-            df[f'{feat}_Cat'] = df[feat].apply(categorize)
-            del df[feat]
-            df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
-        # Prepare data for JSON response
-        productions = []
-        for i, production in enumerate(df):
-            production = {
-                'name': df['name'][i],
-                'temperature': float(df['temperature'][i].round(2)),
-                'humidity': float(df['humidity'][i].round(2)),
-                # 'vibration': df['vibration'][i],
-                'actualRate': float(df['actualRate'][i].round(2)),
-                'predictedRate': float(df['Predicted_Rate'][i].round(2)),
-                'shiftImpact': df['Shift Impact'][i],
-                'tempImpact': df['Temp Impact'][i],
-                'humidityImpact': df['Humidity Impact'][i]
+            for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
+                df[f'{feat}_Cat'] = df[feat].apply(categorize)
+                del df[feat]
+                df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
+            # Prepare data for JSON response
+            productions = []
+            for _, row in df.iterrows():
+                production = {
+                    'name': row['name'],
+                    'temperature': round(row['temperature'],2),
+                    'humidity': round(row['humidity'],2),
+                    # 'vibration': df['vibration'][i],
+                    'actualRate': round(row['actualRate'],2),
+                    'predictedRate': round(row['Predicted_Rate'],2),
+                    'shiftImpact': row['Shift Impact'],
+                    'tempImpact': row['Temp Impact'],
+                    'humidityImpact': row['Humidity Impact']
+                }
+                productions.append(production)
+                
+            dataset = {
+                'labels': labels,
+                'data': data
             }
-            productions.append(production)
-
-        if request.path == '/productionRates/download_csv':
             csv_data = df.to_csv(index=False)
+            cache.set('production_rates', json.dumps(productions), ex=60*60)  # Cache for 1 hour
+            cache.set('production_chart_data', json.dumps(dataset), ex=60*60)
+            cache.set("production_csv", csv_data ,ex=60*60)  # Cache CSV data for download
+                
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        if request.path == '/productionRates/download_csv':
+            
             print(csv_data)
             # Create a Response with CSV mime type and attachment header
             return Response(
@@ -251,11 +271,7 @@ def productionRates():
             return jsonify(productions)
         else:    
             # Return JSON for charting
-            dataset = jsonify({
-                'labels': labels,
-                'data': data
-            })
-            return dataset
+            return jsonify(dataset)
     else:        
         current_user = get_jwt_identity() 
         return render_template('index.html',current_user = current_user)
@@ -271,51 +287,54 @@ def iotDevices():
 @app.route('/motor/download_csv')
 @jwt_required()
 def motorSpeed():
+    dataset = None
+    csv_data = cache.get("motor_csv")
+    motor_speeds_data = cache.get("motor_data")
+    dataset = cache.get('motor_chart_data')
+    model_eq =cache.get('motor_eq')  # Cache model equation for 1 hour
+    r2_text = cache.get('motor_r2')
+    if csv_data and motor_speeds_data and dataset:
+        print("Using cached data...")
+        motor_speeds_data = json.loads(motor_speeds_data)
+        dataset = json.loads(dataset)
+    else:
      # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        motor = client.get_node(f"ns={idx};s=Motor")
-        temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
-        motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
-    finally:
-        client.disconnect()
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:
+            client.connect()
+            idx = 2
+            motor = client.get_node(f"ns={idx};s=Motors")
+            motor_nodes = motor.get_children()  # Get all motor nodes
+            df = pd.DataFrame()
+            all_motor_speeds = []
+            for j, motor in enumerate(motor_nodes):
+                temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
+                motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
 
-    # Prepare data for regression
-    X = np.array(temperatures).reshape(-1, 1)
-    y = motor_speeds
+                df[f'Motor {j+1}'] = np.round(temperatures, 2)  
+                all_motor_speeds.append(motor_speeds) 
+        finally:
+            client.disconnect()
 
-    # Train linear regression model
-    model = LinearRegression()
-    model.fit(X, y)
-    predicted_speed = model.predict(X)
-    model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
-    r2 = r2_score(y, predicted_speed)
-    r2_text = f"Model Accuracy (R²): {r2:.3f}"
+        actual_speed = np.array(all_motor_speeds[0])
 
-    data_table = pd.DataFrame({
-        'temperature': np.round(np.array(temperatures).flatten(), 2).astype(float),
-        'actureSpeed': np.array(motor_speeds).flatten(),
-        'predictedSpeed': np.round(np.array(predicted_speed).flatten(), 2).astype(float)
-    })
-    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        # Return JSON for charting
-        motor_speeds_data = data_table.to_dict(orient='records')
-        
-        if request.path == '/motor/download_csv':
-            csv_data = data_table.to_csv(index=False)
-            print(csv_data)
-            # Create a Response with CSV mime type and attachment header
-            return Response(
-                csv_data,
-                mimetype='text/csv',
-                headers={"Content-disposition":
-                        "attachment; filename=motor_data.csv"})
-        elif request.path == '/motor/data':
-            return jsonify(motor_speeds_data)
-        else:
-            return jsonify({
+        df_final = df.copy()
+        df_final['Actual Speed'] = actual_speed
+
+        X = df_final[[col for col in df_final.columns if col.startswith("Motor")]].values
+        y = df_final['Actual Speed'].values
+
+        model = LinearRegression()
+        model.fit(X, y)
+
+        predicted_speed = model.predict(X).round(2)
+        df_final['Predicted Speed'] = predicted_speed
+
+        model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
+        r2 = r2_score(y, df_final['Predicted Speed'])
+        r2_text = f"Model Accuracy (R²): {r2:.3f}"
+      
+        dataset = {
             'labels': temperatures,
             'datasets': [
                 {
@@ -329,7 +348,30 @@ def motorSpeed():
                     'yAxisID': 'y1'
                 }
             ]
-        })
+        }
+        cache.set('motor_chart_data', json.dumps(dataset), ex=60*60)  # Cache for 1 hour
+        motor_speeds_data = df_final.to_dict(orient='records')
+
+        csv_data = df_final.to_csv(index=False)
+        cache.set("motor_csv", csv_data)  # Cache CSV data for download
+        cache.set("motor_data", json.dumps(motor_speeds_data), ex=60*60)  # Cache motor speeds data for 1 hour
+        cache.set('motor_eq', model_eq, ex=60*60)  # Cache model equation for 1 hour
+        cache.set('motor_r2', r2_text, ex=60*60)
+
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        # Return JSON for charting
+
+        if request.path == '/motor/download_csv':
+            # Create a Response with CSV mime type and attachment header
+            return Response(
+                csv_data,
+                mimetype='text/csv',
+                headers={"Content-disposition":
+                        "attachment; filename=motor_data.csv"})
+        elif request.path == '/motor/data':
+            return jsonify(motor_speeds_data)
+        else:
+            return jsonify(dataset)
         
     else:    
         current_user = get_jwt_identity()  
@@ -346,53 +388,68 @@ def motorSpeed():
 @jwt_required()
 def senser():
     datasets = []
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:
-        client.connect()
-        idx = 2
-        sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
-        sensor_nodes = sensors_folder.get_children() 
-        n = len(sensor_nodes)
-        values = [random.uniform(random.randint(-100,-1), random.randint(1,100)) for _ in range(n)]
+    sensors = []
+    csv_data = None
 
-        #values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
-        df = pd.DataFrame()
-        for j, sensor in enumerate(sensor_nodes):
-            signal_node = sensor.get_child([f"{idx}:Signal"]) 
-            signals = signal_node.get_value()
+    chart_data = cache.get('senser_chart_data')
+    sensor_data = cache.get('senser_data')
+    csv_data = cache.get("sensor_csv")  
+    if chart_data and sensor_data:
+        sensors = json.loads(sensor_data)
+        datasets = json.loads(chart_data)
+        print("Using cacheds data...")     
+    else:
+        # Fetch sensor data from OPC UA server (simulate if unavailable)
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:
+            client.connect()
+            idx = 2
+            sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
+            sensor_nodes = sensors_folder.get_children() 
+            n = len(sensor_nodes)
+            values = [random.uniform(random.randint(-100,-1), random.randint(1,100)) for _ in range(n)]
 
-            df[f'Senser {j}'] = signals
-            df[f'Senser {j}'] = df[f'Senser {j}'].apply(lambda x: round(float(x + values[j] * 10), 2))
+            #values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
+            df = pd.DataFrame()
+            for j, sensor in enumerate(sensor_nodes):
+                signal_node = sensor.get_child([f"{idx}:Signal"]) 
+                signals = signal_node.get_value()
 
-            data = []
-            for i, value in enumerate(signals):
-                    value += values[j] * 10
-                    s = { 'x': i, 'y': value }
-                    data.append(s) 
+                df[f'Senser {j}'] = signals
+                df[f'Senser {j}'] = df[f'Senser {j}'].apply(lambda x: round(float(x + values[j] * 10), 2))
 
-            datasets.append({
-                'label': f'Senser {j+1}',
-                'borderWidth': 1,
-                'radius': 0,
-                'data': data
-            }) 
+                data = []
+                for i, value in enumerate(signals):
+                        value += values[j] * 10
+                        s = { 'x': i, 'y': value }
+                        data.append(s) 
+
+                datasets.append({
+                    'label': f'Senser {j+1}',
+                    'borderWidth': 1,
+                    'radius': 0,
+                    'data': data
+                }) 
            
-        sensor_data = df.copy()
-    
-        model = IsolationForest(contamination=0.1).fit(sensor_data)
-        df['Anomaly Score'] = model.decision_function(sensor_data)
-        df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'}).tolist()
-        #df['name'] = f"Senser {j+1}"
-        df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
+            sensor_data = df.copy()
         
-        sensors = df.to_dict(orient='records')
-    finally:
-        client.disconnect()
+            model = IsolationForest(contamination=0.1).fit(sensor_data)
+            df['Anomaly Score'] = model.decision_function(sensor_data)
+            df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'}).tolist()
+            #df['name'] = f"Senser {j+1}"
+            df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
+            csv_data = df.to_csv(index=False)
+              # Cache for 1 hour
+            cache.set("sensor_csv", csv_data)  
+            sensors = df.to_dict(orient='records')
+            cache.set('senser_data', json.dumps(sensors), ex=60*60)
+            cache.set('senser_chart_data', json.dumps(datasets), ex=60*60) 
+        finally:
+            client.disconnect()
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/senser/download_csv':
-            csv_data = df.to_csv(index=False)
-            print(csv_data)
+           
             # Create a Response with CSV mime type and attachment header
             return Response(
                 csv_data,
