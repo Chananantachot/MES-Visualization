@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib
 
 from flask import (
-    Flask, Response, json, make_response, url_for, render_template, jsonify,
+    Flask, Response, json, make_response, send_file, send_from_directory, url_for, render_template, jsonify,
     request, redirect, g
 )
 from flask_jwt_extended import (
@@ -66,55 +66,74 @@ def before_request():
     except:
         # Redirect to login and save the attempted URL
         return redirect(url_for('users.login', next=request.url))
-    
+
+@app.route('/sw.js')
+def sw():
+    return send_from_directory('.', 'sw.js', mimetype='application/javascript')
+
+
+@app.route("/api/tryFetch")
+def tryFetch():
+    return jsonify({
+        'message': 'Ok',
+        'status': 'success'
+    })
+
+@app.route('/api/machines/download_csv')
+@app.route("/api/machines/health")
 @app.route("/")
-@app.route("/machines/health")
-@app.route('/machines/download_csv')
 @jwt_required()
 def homepage():  
     current_user = get_jwt_identity() 
-    client = Client("opc.tcp://0.0.0.0:4840/server/")
-    try:    
-            client.connect()
-            idx = 2
-            machines_folder = client.get_node(f"ns={idx};s=Machines") 
-            machine_nodes = machines_folder.get_children()
+    datas = []
+    if cache is not None:
+       csv_data = cache.get("machine_csv_data")
+       datas = cache.get("machine_data") if cache.exists('machine_data') else []
 
-            for machine in machine_nodes:
-                machine_id = machine.get_child([f"{idx}:MachineID"]) 
-                machine_id_value = machine_id.get_value()[0]
-                uptime_node = machine.get_child([f"{idx}:Machine_Uptime"]) 
-                uptime_value = uptime_node.get_value()
-                vibration_node = machine.get_child([f"{idx}:Machine_Vibrations"]) 
-                vibration_value = vibration_node.get_value()
-                temperature_node = machine.get_child([f"{idx}:Machine_Temperatures"]) 
-                temperature_value = temperature_node.get_value()
-    finally:
-        client.disconnect()
+    if datas and csv_data:
+        datas = json.loads(datas)
+        csv_data = csv_data
+    else:
+        client = Client("opc.tcp://0.0.0.0:4840/server/")
+        try:    
+                client.connect()
+                idx = 2
+                machines_folder = client.get_node(f"ns={idx};s=Machines") 
+                machine_nodes = machines_folder.get_children()
 
-    data = pd.DataFrame({
-            'MachineID': machine_id_value,
-            'Temperature': temperature_value,
-            'Vibration': vibration_value,
-            'Uptime': uptime_value
-        })
-    data['Failure_Risk'] = np.random.choice([0, 1], size=10)
+                for machine in machine_nodes:
+                    machine_id = machine.get_child([f"{idx}:MachineID"]) 
+                    machine_id_value = machine_id.get_value()[0]
+                    uptime_node = machine.get_child([f"{idx}:Machine_Uptime"]) 
+                    uptime_value = uptime_node.get_value()
+                    vibration_node = machine.get_child([f"{idx}:Machine_Vibrations"]) 
+                    vibration_value = vibration_node.get_value()
+                    temperature_node = machine.get_child([f"{idx}:Machine_Temperatures"]) 
+                    temperature_value = temperature_node.get_value()
+        finally:
+            client.disconnect()
 
-    X = data[['Temperature', 'Vibration', 'Uptime']]
-    y = data['Failure_Risk']
-    model = RandomForestClassifier().fit(X, y)
+        data = pd.DataFrame({
+                'MachineID': machine_id_value,
+                'Temperature': temperature_value,
+                'Vibration': vibration_value,
+                'Uptime': uptime_value
+            })
+        data['Failure_Risk'] = np.random.choice([0, 1], size=10)
 
-    data['Risk_Probability'] = (model.predict_proba(X)[:, 0] * 100).round(2)
-    data['Risk_Probability'] = data['Risk_Probability'].astype(str) + '%'
-    data['Risk_Probability'] = data['Risk_Probability'].replace('0.0%', '0%')
-    data['Risk_Probability'] = data['Risk_Probability'].replace('100.0%', '100%')
-    data['Risk_Probability'] = data['Risk_Probability'].replace('nan', '0%')
-    data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
-    data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
+        X = data[['Temperature', 'Vibration', 'Uptime']]
+        y = data['Failure_Risk']
+        model = RandomForestClassifier().fit(X, y)
 
-    machine_data = data.to_dict()
-    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
-        datas = []
+        data['Risk_Probability'] = (model.predict_proba(X)[:, 0] * 100).round(2)
+        data['Risk_Probability'] = data['Risk_Probability'].astype(str) + '%'
+        data['Risk_Probability'] = data['Risk_Probability'].replace('0.0%', '0%')
+        data['Risk_Probability'] = data['Risk_Probability'].replace('100.0%', '100%')
+        data['Risk_Probability'] = data['Risk_Probability'].replace('nan', '0%')
+        data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
+        data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
+
+        machine_data = data.to_dict()
         for i, machine in enumerate(machine_data):
             m = {
                 'machineID': machine_data['MachineID'][i],
@@ -124,29 +143,35 @@ def homepage():
                 'failureRisk': machine_data['Failure_Risk'][i],
                 'riskProbability': machine_data['Risk_Probability'][i]
             }
-            datas.append(m)   
-        if request.path == '/machines/download_csv':
-            csv_data = data.to_csv(index=False)
-            print(csv_data)
-            # Create a Response with CSV mime type and attachment header
+            datas.append(m)
+
+        csv_data = data.to_csv(index=False)
+        cache.set("machine_csv_data", csv_data, ex=60*60)
+        cache.set("machine_data", json.dumps(datas), ex=60*60)    
+
+    if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
+        if request.path == '/api/machines/download_csv':
             return Response(
                 csv_data,
                 mimetype='text/csv',
                 headers={"Content-disposition":
                         "attachment; filename=senser_data.csv"})
-        else:  #request.path == '/machines/health':
+        
+        if request.path == '/api/machines/health':  
             return jsonify(datas)    
     else:
         return render_template('home.html',current_user = current_user)
 
-@app.route("/productionRates")
+@app.route('/productionRates/download_csv')    
 @app.route('/productionRates/data')
-@app.route('/productionRates/download_csv')
+@app.route("/productionRates")
 @jwt_required()
 def productionRates():
-    productions = cache.get('production_rates')  # Cache for 1 hour
-    dataset = cache.get('production_chart_data')
-    csv_data = cache.get("production_csv") 
+    if cache is not None:
+        productions = cache.get("production_rates") 
+        dataset = cache.get("production_chart_data") 
+        csv_data = cache.get('production_csv')
+
     if productions and dataset and csv_data:
         print("Using cached data...")
         productions = json.loads(productions)
@@ -253,13 +278,13 @@ def productionRates():
                 'data': data
             }
             csv_data = df.to_csv(index=False)
-            cache.set('production_rates', json.dumps(productions), ex=60*60)  # Cache for 1 hour
-            cache.set('production_chart_data', json.dumps(dataset), ex=60*60)
-            cache.set("production_csv", csv_data ,ex=60*60)  # Cache CSV data for download
+            if cache is not None:
+                cache.set('production_rates', json.dumps(productions), ex=60*60)  # Cache for 1 hour
+                cache.set('production_chart_data', json.dumps(dataset), ex=60*60)
+                cache.set("production_csv", csv_data ,ex=60*60)  # Cache CSV data for download
                 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/productionRates/download_csv':
-            
             print(csv_data)
             # Create a Response with CSV mime type and attachment header
             return Response(
@@ -281,18 +306,19 @@ def productionRates():
 def iotDevices():
     current_user = get_jwt_identity() 
     return render_template('iotDevices.html', current_user = current_user)
-
-@app.route("/motor")
-@app.route('/motor/data')
 @app.route('/motor/download_csv')
+@app.route('/motor/data')
+@app.route("/motor")
 @jwt_required()
 def motorSpeed():
     dataset = None
-    csv_data = cache.get("motor_csv")
-    motor_speeds_data = cache.get("motor_data")
-    dataset = cache.get('motor_chart_data')
-    model_eq =cache.get('motor_eq')  # Cache model equation for 1 hour
-    r2_text = cache.get('motor_r2')
+    if cache is not None:
+        csv_data = cache.get("motor_csv") if cache.exists("motor_csv") else None
+        motor_speeds_data = cache.get("motor_data") if cache.exists("motor_data") else None
+        dataset = cache.get('motor_chart_data') if cache.exists('motor_chart_data') else None
+        model_eq = cache.get('motor_eq') if cache.exists('motor_eq') else None
+        r2_text = cache.get('motor_r2') if cache.exists('motor_r2') else None
+
     if csv_data and motor_speeds_data and dataset:
         print("Using cached data...")
         motor_speeds_data = json.loads(motor_speeds_data)
@@ -349,14 +375,16 @@ def motorSpeed():
                 }
             ]
         }
-        cache.set('motor_chart_data', json.dumps(dataset), ex=60*60)  # Cache for 1 hour
+        
         motor_speeds_data = df_final.to_dict(orient='records')
-
         csv_data = df_final.to_csv(index=False)
-        cache.set("motor_csv", csv_data)  # Cache CSV data for download
-        cache.set("motor_data", json.dumps(motor_speeds_data), ex=60*60)  # Cache motor speeds data for 1 hour
-        cache.set('motor_eq', model_eq, ex=60*60)  # Cache model equation for 1 hour
-        cache.set('motor_r2', r2_text, ex=60*60)
+
+        if cache is not None:
+            cache.set('motor_chart_data', json.dumps(dataset), ex=60*60) 
+            cache.set("motor_csv", csv_data)  # Cache CSV data for download
+            cache.set("motor_data", json.dumps(motor_speeds_data), ex=60*60)  # Cache motor speeds data for 1 hour
+            cache.set('motor_eq', model_eq, ex=60*60)  # Cache model equation for 1 hour
+            cache.set('motor_r2', r2_text, ex=60*60)
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         # Return JSON for charting
@@ -382,18 +410,19 @@ def motorSpeed():
             current_user=current_user
         )
 
-@app.route("/senser")
-@app.route('/senser/data')
 @app.route('/senser/download_csv')
+@app.route('/senser/data')
+@app.route("/senser")
 @jwt_required()
 def senser():
     datasets = []
     sensors = []
     csv_data = None
-
-    chart_data = cache.get('senser_chart_data')
-    sensor_data = cache.get('senser_data')
-    csv_data = cache.get("sensor_csv")  
+    if cache is not None:
+        csv_data = cache.get("sensor_csv") if cache.exists("sensor_csv") else None
+        sensor_data = cache.get("senser_data") if cache.exists("senser_data") else None
+        chart_data = cache.get('senser_chart_data') if cache.exists('senser_chart_data') else None
+    
     if chart_data and sensor_data:
         sensors = json.loads(sensor_data)
         datasets = json.loads(chart_data)
@@ -439,11 +468,13 @@ def senser():
             #df['name'] = f"Senser {j+1}"
             df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
             csv_data = df.to_csv(index=False)
-              # Cache for 1 hour
-            cache.set("sensor_csv", csv_data)  
             sensors = df.to_dict(orient='records')
-            cache.set('senser_data', json.dumps(sensors), ex=60*60)
-            cache.set('senser_chart_data', json.dumps(datasets), ex=60*60) 
+
+            if cache is not None:
+              # Cache for 1 hour
+                cache.set("sensor_csv", csv_data)  
+                cache.set('senser_data', json.dumps(sensors), ex=60*60)
+                cache.set('senser_chart_data', json.dumps(datasets), ex=60*60) 
         finally:
             client.disconnect()
 

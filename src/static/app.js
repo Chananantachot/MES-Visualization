@@ -1,5 +1,6 @@
-const ALERT_THRESHOLD = 40;
-const ALERT_HightTempreature = 80;
+window.addEventListener('online', () => document.getElementById('status').textContent = 'Online');
+window.addEventListener('offline', () => document.getElementById('status').textContent = 'Offline');
+
 var myChart = null
 function InitializeChart() {
 
@@ -57,7 +58,7 @@ async function updateChart() {
     _myChart.data.labels = data.labels;
     _myChart.data.datasets[0].data = data.data;
 
-    var pointColors = data.data.map(rate => rate < ALERT_THRESHOLD ? 'red' : 'blue');
+    var pointColors = data.data.map(rate => rate < 40 ? 'red' : 'blue');
     _myChart.data.datasets[0].pointBackgroundColor = pointColors;
     _myChart.update();
 }
@@ -195,7 +196,7 @@ function loadMachineHelth() {
         { label: 'Risk Probability', name: 'riskProbability', width: 150 },
         { label: 'Failure Risk', name: 'failureRisk', width: 100, classes: 'text-center' }
     ]
-     InitializejqGrid("#machineTable","Machine Health Prediction",colModel,"/machines/health", "/machines/download_csv", "machinesHealth_data.csv")
+     InitializejqGrid("#machineTable","Machine Health Prediction",colModel,"/api/machines/health", "/api/machines/download_csv", "machinesHealth_data.csv")
 }
 
 $(document).ready(function () {
@@ -206,6 +207,16 @@ $(document).ready(function () {
         if ($(this).hasClass('active')) $(this).find('span').html('&#x25B2;')
         else $(this).find('span').html('&#x25BC;')
     })
+
+    $('.menu-btn').click(() => {
+        var main_menu = $('.main-menu');
+        if (main_menu != null && main_menu != 'undefined'){
+            console.log('showing main menu...')
+            $('.main-menu').toggleClass('show');
+        }else{
+            console.log('main_menu not founded...')
+        }
+    });
 });
 
 async function InitializejqGrid(tableid = '', caption = '', colModels = [],  url_endpoint = '', download_url = '', filename = '' ) {
@@ -276,4 +287,4 @@ function downloadCSV(csvString, filename) {
       URL.revokeObjectURL(url);
     }
 
-document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));
+//document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));
