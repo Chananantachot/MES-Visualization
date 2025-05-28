@@ -2,64 +2,68 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MES Products Rate Visualization</title>
-  {% block styles %}
-  {% endblock %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel=" stylesheet" href="{{ url_for('static', filename='app.css') }}" />
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}"">
+  {% block styles %}{% endblock %}
+   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" />
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
 </head>
 
 <body>
   <div class="main-nav">
     <div class="menu-btn">
-      <i class="fas fa-bars  fa-2x"></i>
+      <i class="fas fa-bars fa-2x"></i>
     </div>
     <nav class="container-nav">
-      <img src="{{ url_for('static', filename='logo.png') }}" alt="FAKE IT EASY" class="logo">
-      {%  if current_user %}
-      <ul class="main-menu">
-        <li><a href="{{ url_for('homepage') }}">Home</a></li>
-        <li><a href="{{ url_for('productionRates') }}">Production Rates</a></li>
-        <li><a href="{{ url_for('senser') }}">Senser Degradation Factors</a></li>
-        <li><a href="{{ url_for('motorSpeed') }}">Motor Spped Analysis</a></li>
-        <li><a href="{{ url_for('iotDevices') }}">IoT Devices</a></li>
-      </ul>
-      {% else %}
-      <ul class="main-menu">
-        <li><a href="#">Home</a></li>
-        <li><a href="#">Production Rates</a></li>
-        <li><a href="#">Senser Degradation Factors</a></li>
-        <li><a href="#">Motor Spped Analysis</a></li>
-        <li><a href="#">IoT Devices</a></li>
-      </ul>
-      {% endif %}
-      <ul class="right-menu">
-        <li>
-          {%  if current_user %}
+      <div class="logo-container">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="FAKE IT EASY" class="logo" />
+      </div>
+      <div class="nav-links">
+        {% if current_user %}
+        <ul class="main-menu">
+          <li><a href="{{ url_for('homepage') }}">Home</a></li>
+          <li><a href="{{ url_for('productionRates') }}">Production Rates</a></li>
+          <li><a href="{{ url_for('senser') }}">Senser Degradation Factors</a></li>
+          <li><a href="{{ url_for('motorSpeed') }}">Motor Speed Analysis</a></li>
+          <li><a href="{{ url_for('iotDevices') }}">IoT Devices</a></li>
+        </ul>
+        {% else %}
+        <ul class="main-menu">
+          <li><a href="#">Home</a></li>
+          <li><a href="#">Production Rates</a></li>
+          <li><a href="#">Senser Degradation Factors</a></li>
+          <li><a href="#">Motor Speed Analysis</a></li>
+          <li><a href="#">IoT Devices</a></li>
+        </ul>
+        {% endif %}
+        <ul class="right-menu">
+          <li>
+            {% if current_user %}
             <i class="fa-solid fa-user"></i>
             <span class="navbar-text">Hello, {{ current_user }}</span>
-          {% else %}
+            {% else %}
             <a href="{{ url_for('users.login') }}">Login</a>
-          {% endif %}
-        </li>
-        <li>
-          {%  if current_user %}
+            {% endif %}
+          </li>
+          <li>
+            {% if current_user %}
             <a href="{{ url_for('users.logout') }}">Logout</a>
-           {% else %}
+            {% else %}
             <a href="{{ url_for('users.newUser') }}">Register</a>
-           {% endif %}
-        </li>
-      </ul>
+            {% endif %}
+          </li>
+        </ul>
+      </div>
     </nav>
   </div>
-  <div class="container">
-    {% block content %}
-    {% endblock %}
+
+  <div class="container table-responsive">
+    {% block content %}{% endblock %}
   </div>
+
   <footer class="footer">
     <div class="footer-inner">
       <div><i class="fas fa-globe fa-2x"></i> English (United States)</div>
@@ -68,25 +72,28 @@
         <li><a href="#">Contact Us</a></li>
         <li><a href="#">Privacy & cookies</a></li>
         <li><a href="#">Terms of use</a></li>
-        <li><a href="#">&copy; FAKE IT Easy 2025</a></li>
+        <li><a href="#">&copy; FAKE IT EASY 2025</a></li>
       </ul>
     </div>
   </footer>
-</body>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
- <!-- Bootstrap JS (required for dropdown functionality) -->
- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="{{ url_for('static', filename='app.js') }}"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js', { scope: '/' })
-            .then(() => console.log('Service Worker Registered'))
-            .catch(err => console.error('Registration Failed:', err));
-    }
-</script>
-{% block scripts %}
 
-{% endblock %}
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./sw.js', { scope: '/' })
+      .then(() => console.log('Service Worker Registered'))
+      .catch(err => console.error('Registration Failed:', err));
+    }
+
+    // Optional: Toggle nav menu on small screens
+    $('.menu-btn').on('click', function () {
+      $('.nav-links').toggleClass('active');
+    });
+  </script>
+  {% block scripts %}{% endblock %}
+</body>
 
 </html>

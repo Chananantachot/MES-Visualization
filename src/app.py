@@ -59,7 +59,7 @@ def close_connection(exception):
 def before_request():
     authDb.init_db()
 
-    if request.endpoint in ['users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
+    if request.endpoint in ['sw', 'tryFetch','users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
         return
     try:
         verify_jwt_in_request()

@@ -1,215 +1,97 @@
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
+/* Reset & base styles */
 body {
+  margin: 0;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #000;
   background-color: #f4f4f4;
-  padding: 20px;
 }
 
-.no-scroll {
-  overflow: hidden;
+/* Navigation styles */
+.main-nav {
+  background-color: #f4f4f4;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 999;
+}
+
+.container-nav {
+  display: flex;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+  align-items: center;
+  justify-content: space-between;
+  /* padding: 0.5rem 1rem; */
+  flex-wrap: wrap;
 }
 
 .container {
   width: 90%;
-  max-width: 1100px;
-  margin: auto;
-  margin-top: 20px;
+  max-width: 1080px;
+  margin-top: 30px;
+  margin-bottom: auto;
+
   background: white;
-  padding: 20px;
+  padding: 20px ;
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
-a {
-  text-decoration: none;
-  color: #262626;
-  outline: none;
+
+.logo-container {
+  flex-shrink: 0;
 }
 
-p {
-  font-size: 1.3rem;
-  line-height: 1.5;
-}
-
-ul {
-  list-style-type: none;
-}
-
-h1 {
-  text-align: center;
-}
-
-canvas {
-  max-width: 100%;
+.logo {
+  max-width: 100px;
   height: auto;
 }
 
-.chart-container {
-  position: relative;
-  margin: auto;
-  height: 40vh;
-  width: 80vw;
-}
-
-.chartjs-render-monitor {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.container-nav {
-  position: sticky;
-  top: 0;
-  background: #f4f4f4;
-  width: 90%;
-  max-width: 1100px;
-  margin: auto;
-  padding: 10px;
-}
-
-/* Nav */
-.main-nav {
-  position: sticky;
-  margin-left: auto;
-  margin-right: auto;
-  width: 88%;
-  top: 0;
+.nav-links {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
-  /* padding: 20px 0; */
-  font-size: 13px;
-  z-index: 20;
-  background-color: #f4f4f4;
-}
-
-.main-nav .logo {
-  width: 100px;
-}
-
-.main-nav ul {
-  display: flex;
-}
-
-.main-nav ul.main-menu {
+  padding: 20px;
   flex: 1;
-  margin-left: 20px;
+  gap: 20px;
 }
 
-.main-nav ul li {
-  padding: 0 10px;
+.main-menu,
+.right-menu {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  gap: 20px;
+  white-space: nowrap;
 }
 
-.main-nav ul li a {
-  padding-bottom: 2px;
+.main-menu li a,
+.right-menu li a {
+  text-decoration: none;
+  color: #333;
+  font-weight: 500;
+  transition: color 0.3s;
 }
 
-.main-nav ul li a:hover {
-  border-bottom: 2px solid #262626;
+.main-menu li a:hover,
+.right-menu li a:hover {
+  color: #007bff;
+  border-bottom: 2px solid #007bff;
 }
 
+.navbar-text {
+  margin-left: 8px;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Mobile menu toggle */
 .menu-btn {
-  cursor: pointer;
-  position: absolute;
-  top: 18px;
-  right: 0;
-  z-index: 25;
   display: none;
-}
-
-/* Footer */
-.footer {
-  background: #f2f2f2;
-  color: #616161;
-  font-size: 12px;
-  padding: 20px 0;
-}
-
-.footer-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 0 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.footer div {
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-}
-
-.footer div i {
+  cursor: pointer;
   margin-right: 10px;
-}
-
-.footer ul {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.footer li {
-  margin-right: 30px;
-  margin-bottom: 20px;
-}
-
-/* Mobile Menu Styles */
-@media (max-width: 880px) {
-  .menu-btn {
-    display: block;
-  }
-
-  .menu-btn:hover {
-    opacity: 0.5;
-  }
-
-.main-nav ul.main-menu {
-  position: fixed;
-  top: 0;
-  left: 0;
-  background-color: rgba(255, 255, 255, 0.95);
-  width: 70%;
-  height: 100%;
-  border-right: 1px solid #ccc;
-  padding: 30px;
-  transform: translateX(-100%);
-  transition: transform 0.3s ease-in-out;
-  z-index: 999;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  pointer-events: none; /* Prevent click when hidden */
-  opacity: 0;
-}
-
-.main-nav ul.main-menu.show {
-  transform: translateX(0);
-  pointer-events: auto;
-  opacity: 1;
-}
-
-
-  .main-nav ul.main-menu.show {
-    transform: translateX(0);
-  }
-
-  .main-nav ul.main-menu li {
-    padding: 10px;
-    border-bottom: #ccc solid 1px;
-    font-size: 14px;
-  }
-
-  .main-nav ul.main-menu li:last-child {
-    border-bottom: 0;
-  }
 }
 
  .form-signin
@@ -287,3 +169,113 @@ canvas {
         display: block;
         margin-top: 10px;
     }
+
+@media (max-width: 880px) {
+  .menu-btn {
+    display: block;
+  }
+
+  .container-nav {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .logo-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    padding-bottom: 1rem;
+  }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    background: #ffffff;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  .nav-links.active {
+    display: flex;
+  }
+
+  .main-menu,
+  .right-menu {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-left: 0;
+    margin-bottom: 1rem;
+  }
+
+  .main-menu li,
+  .right-menu li {
+    width: 100%;
+  }
+
+  .main-menu li a,
+  .right-menu li a {
+    display: block;
+    width: 100%;
+    padding: 0.5rem 0;
+    color: #333;
+    border-bottom: 1px solid #eee;
+  }
+
+  .navbar-text {
+    padding-left: 0.5rem;
+  }
+}
+
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+.chart-container {
+  position: relative;
+  margin: auto;
+  height: 30vh;
+  width: 70vw;
+}
+
+.chartjs-render-monitor {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Footer styles */
+.footer {
+  margin: 0;
+  left: 0;
+  bottom: 0;
+  background-color: #f4f4f4;
+  color: #000;
+  padding: 1rem;
+  text-align: center;
+}
+
+.footer-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.footer ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.footer a {
+  color: #000;
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
+}
