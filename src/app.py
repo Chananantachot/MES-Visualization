@@ -59,7 +59,7 @@ def close_connection(exception):
 def before_request():
     authDb.init_db()
 
-    if request.endpoint in ['sw', 'tryFetch','users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
+    if request.endpoint in ['sw','users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
         return
     try:
         verify_jwt_in_request()
@@ -71,21 +71,14 @@ def before_request():
 def sw():
     return send_from_directory('.', 'sw.js', mimetype='application/javascript')
 
-
-@app.route("/api/tryFetch")
-def tryFetch():
-    return jsonify({
-        'message': 'Ok',
-        'status': 'success'
-    })
-
 @app.route('/api/machines/download_csv')
 @app.route("/api/machines/health")
 @app.route("/")
 @jwt_required()
 def homepage():  
     current_user = get_jwt_identity() 
-    datas = []
+    datas = None
+    csv_data = None
     if cache is not None:
        csv_data = cache.get("machine_csv_data")
        datas = cache.get("machine_data") if cache.exists('machine_data') else []
@@ -134,6 +127,7 @@ def homepage():
         data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
         machine_data = data.to_dict()
+        datas = []
         for i, machine in enumerate(machine_data):
             m = {
                 'machineID': machine_data['MachineID'][i],
@@ -164,10 +158,14 @@ def homepage():
         return render_template('home.html',current_user = current_user , data = datas)
 
 @app.route('/productionRates/download_csv')    
+@app.route('/productionRates/chart/data')
 @app.route('/productionRates/data')
 @app.route("/productionRates")
 @jwt_required()
 def productionRates():
+    productions = None
+    dataset = None
+    csv_data = None
     if cache is not None:
         productions = cache.get("production_rates") 
         dataset = cache.get("production_chart_data") 
@@ -297,7 +295,8 @@ def productionRates():
             return jsonify(productions)
         else:    
             # Return JSON for charting
-            return jsonify(dataset)
+            if request.path == '/productionRates/chart/data':
+                return jsonify(dataset)
     else:        
         current_user = get_jwt_identity() 
         return render_template('index.html',current_user = current_user)
@@ -308,11 +307,14 @@ def iotDevices():
     current_user = get_jwt_identity() 
     return render_template('iotDevices.html', current_user = current_user)
 @app.route('/motor/download_csv')
+@app.route('/motor/chart/data')
 @app.route('/motor/data')
 @app.route("/motor")
 @jwt_required()
 def motorSpeed():
     dataset = None
+    motor_speeds_data = None
+    csv_data = None
     if cache is not None:
         csv_data = cache.get("motor_csv") if cache.exists("motor_csv") else None
         motor_speeds_data = cache.get("motor_data") if cache.exists("motor_data") else None
@@ -400,7 +402,8 @@ def motorSpeed():
         elif request.path == '/motor/data':
             return jsonify(motor_speeds_data)
         else:
-            return jsonify(dataset)
+            if request.path == '/motor/chart/data':
+                return jsonify(dataset)
         
     else:    
         current_user = get_jwt_identity()  
@@ -412,12 +415,13 @@ def motorSpeed():
         )
 
 @app.route('/senser/download_csv')
+@app.route('/senser/chart/data')
 @app.route('/senser/data')
 @app.route("/senser")
 @jwt_required()
 def senser():
-    datasets = []
-    sensors = []
+    datasets = None
+    sensors = None
     csv_data = None
     if cache is not None:
         csv_data = cache.get("sensor_csv") if cache.exists("sensor_csv") else None
@@ -441,6 +445,7 @@ def senser():
 
             #values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
             df = pd.DataFrame()
+            datasets = []
             for j, sensor in enumerate(sensor_nodes):
                 signal_node = sensor.get_child([f"{idx}:Signal"]) 
                 signals = signal_node.get_value()
@@ -449,6 +454,7 @@ def senser():
                 df[f'Senser {j}'] = df[f'Senser {j}'].apply(lambda x: round(float(x + values[j] * 10), 2))
 
                 data = []
+               
                 for i, value in enumerate(signals):
                         value += values[j] * 10
                         s = { 'x': i, 'y': value }
@@ -491,10 +497,11 @@ def senser():
         elif request.path == '/senser/data':
             return jsonify(sensors)
         else:
-            josn = {
-                'datasets': datasets,
-            }
-            return jsonify(josn)
+            if request.path == '/senser/chart/data':
+                josn = {
+                    'datasets': datasets,
+                }
+                return jsonify(josn)
     else: 
         access_token = request.cookies.get('access_token_cookie')
         if not access_token:

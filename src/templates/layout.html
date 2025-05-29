@@ -87,7 +87,14 @@
       .then(() => console.log('Service Worker Registered'))
       .catch(err => console.error('Registration Failed:', err));
     }
-
+    navigator.serviceWorker.ready.then(reg => {
+      if ('sync' in reg) {
+        return reg.sync.register('retry-cache');
+      } else {
+        console.warn('Background Sync not supported. Consider a fallback.');
+        // Optional: implement retry logic manually here
+      }
+    });
     // Optional: Toggle nav menu on small screens
     $('.menu-btn').on('click', function () {
       $('.nav-links').toggleClass('active');

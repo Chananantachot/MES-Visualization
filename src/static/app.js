@@ -53,7 +53,7 @@ async function fetchData(url) {
 }
 
 async function updateChart() {
-    var data = await fetchData('/productionRates');
+    var data = await fetchData('/productionRates/chart/data');
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets[0].data = data.data;
@@ -64,7 +64,7 @@ async function updateChart() {
 }
 
 async function updateMotorSpeedChart() {
-    var data = await fetchData("/motor");
+    var data = await fetchData("/motor/chart/data");
     var _myChart = InitializeChart();
     _myChart.data.labels = data.labels;
     _myChart.data.datasets = data.datasets;
@@ -72,11 +72,11 @@ async function updateMotorSpeedChart() {
 }
 
 async function updateSensersChart() {
-    var json = await fetchData('/senser');
+    var json = await fetchData('/senser/chart/data');
     var datasets = json.datasets;
     const totalDuration = 10000;
 
-    const delayBetweenPoints = totalDuration / datasets[1].data.length;
+    const delayBetweenPoints = totalDuration / datasets[0].data.length;
     const previousY = (ctx) => ctx.index === 0 ? ctx.chart.scales.y.getPixelForValue(100) : ctx.chart.getDatasetMeta(ctx.datasetIndex).data[ctx.index - 1].getProps(['y'], true).y;
     const animation = {
         x: {
