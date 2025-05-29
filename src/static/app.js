@@ -190,11 +190,11 @@ async function loadSensorData() {
 function loadMachineHelth() {
     var colModel = [
         { label: 'Machine ID', name: 'machineID', width: 80 },
-        { label: 'Temperature', name: 'temperature', width: 150 },
+        { label: 'Temperature (°C)', name: 'temperature', width: 150 },
         { label: 'Vibration', name: 'vibration', width: 150 },
         { label: 'Uptime', name: 'uptime', width: 150 },
-        { label: 'Risk Probability', name: 'riskProbability', width: 150 },
-        { label: 'Failure Risk', name: 'failureRisk', width: 100, classes: 'text-center' }
+        { label: 'Risk Prob (%)', name: 'riskProbability', width: 150 },
+        { label: '', name: 'failureRisk', width: 100, classes: 'text-center' }
     ]
      InitializejqGrid("#machineTable","Machine Health Prediction",colModel,"/api/machines/health", "/api/machines/download_csv", "machinesHealth_data.csv")
 }

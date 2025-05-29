@@ -171,6 +171,11 @@ body {
     }
 
 @media (max-width: 880px) {
+
+  .ui-jqgrid.ui-jqgrid-bootstrap {
+      display: none;
+    }
+
   .menu-btn {
     display: block;
   }

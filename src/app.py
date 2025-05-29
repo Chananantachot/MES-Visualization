@@ -126,10 +126,10 @@ def homepage():
         model = RandomForestClassifier().fit(X, y)
 
         data['Risk_Probability'] = (model.predict_proba(X)[:, 0] * 100).round(2)
-        data['Risk_Probability'] = data['Risk_Probability'].astype(str) + '%'
-        data['Risk_Probability'] = data['Risk_Probability'].replace('0.0%', '0%')
-        data['Risk_Probability'] = data['Risk_Probability'].replace('100.0%', '100%')
-        data['Risk_Probability'] = data['Risk_Probability'].replace('nan', '0%')
+        data['Risk_Probability'] = data['Risk_Probability'].astype(float)
+        # data['Risk_Probability'] = data['Risk_Probability']
+        # data['Risk_Probability'] = data['Risk_Probability']
+        # data['Risk_Probability'] = data['Risk_Probability']
         data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
         data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
@@ -137,11 +137,12 @@ def homepage():
         for i, machine in enumerate(machine_data):
             m = {
                 'machineID': machine_data['MachineID'][i],
-                'temperature': machine_data['Temperature'][i],
-                'vibration': machine_data['Vibration'][i],
-                'uptime': machine_data['Uptime'][i],
+                'temperature': round(machine_data['Temperature'][i],2),
+                'vibration': round(machine_data['Vibration'][i],2),
+                'uptime': round(machine_data['Uptime'][i],2),
                 'failureRisk': machine_data['Failure_Risk'][i],
-                'riskProbability': machine_data['Risk_Probability'][i]
+                'riskProbability': round(machine_data['Risk_Probability'][i],2),
+                'htmlStyleText': f'style=width:{round(machine_data['Risk_Probability'][i],0)}%;'
             }
             datas.append(m)
 
@@ -160,7 +161,7 @@ def homepage():
         if request.path == '/api/machines/health':  
             return jsonify(datas)    
     else:
-        return render_template('home.html',current_user = current_user)
+        return render_template('home.html',current_user = current_user , data = datas)
 
 @app.route('/productionRates/download_csv')    
 @app.route('/productionRates/data')
