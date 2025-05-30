@@ -87,6 +87,7 @@ def homepage():
         datas = json.loads(datas)
         csv_data = csv_data
     else:
+        machines = []
         client = Client("opc.tcp://0.0.0.0:4840/server/")
         try:    
                 client.connect()
@@ -96,23 +97,28 @@ def homepage():
 
                 for machine in machine_nodes:
                     machine_id = machine.get_child([f"{idx}:MachineID"]) 
-                    machine_id_value = machine_id.get_value()[0]
+                    machine_id_value = machine_id.get_value()
                     uptime_node = machine.get_child([f"{idx}:Machine_Uptime"]) 
                     uptime_value = uptime_node.get_value()
                     vibration_node = machine.get_child([f"{idx}:Machine_Vibrations"]) 
                     vibration_value = vibration_node.get_value()
                     temperature_node = machine.get_child([f"{idx}:Machine_Temperatures"]) 
                     temperature_value = temperature_node.get_value()
+
+                    machines.append({
+                        'MachineID': machine_id_value,
+                        'Temperature': temperature_value,
+                        'Vibration': vibration_value,
+                        'Uptime': uptime_value,
+                        'Failure_Risk': np.random.choice([0, 1])
+                    })
         finally:
             client.disconnect()
 
-        data = pd.DataFrame({
-                'MachineID': machine_id_value,
-                'Temperature': temperature_value,
-                'Vibration': vibration_value,
-                'Uptime': uptime_value
-            })
-        data['Failure_Risk'] = np.random.choice([0, 1], size=10)
+        data = pd.DataFrame(machines)
+        #data['Failure_Risk'] = np.random.choice([0, 1], size=10)
+        for col in ['Temperature', 'Vibration', 'Uptime']:
+            data[col] = data[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
 
         X = data[['Temperature', 'Vibration', 'Uptime']]
         y = data['Failure_Risk']
@@ -126,17 +132,16 @@ def homepage():
         data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
         data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
 
-        machine_data = data.to_dict()
         datas = []
-        for i, machine in enumerate(machine_data):
+        for _, machine in data.iterrows(): 
             m = {
-                'machineID': machine_data['MachineID'][i],
-                'temperature': round(machine_data['Temperature'][i],2),
-                'vibration': round(machine_data['Vibration'][i],2),
-                'uptime': round(machine_data['Uptime'][i],2),
-                'failureRisk': machine_data['Failure_Risk'][i],
-                'riskProbability': round(machine_data['Risk_Probability'][i],2),
-                'htmlStyleText': f'style=width:{round(machine_data['Risk_Probability'][i],0)}%;'
+                'machineID': machine['MachineID'],
+                'temperature': round(machine['Temperature'],2),
+                'vibration': round(machine['Vibration'],2),
+                'uptime': round(machine['Uptime'],2),
+                'failureRisk': machine['Failure_Risk'],
+                'riskProbability': round(machine['Risk_Probability'],2),
+                'htmlStyleText': f'style=width:{round(machine['Risk_Probability'],0)}%;'
             }
             datas.append(m)
 

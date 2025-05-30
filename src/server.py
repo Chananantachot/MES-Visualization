@@ -23,17 +23,18 @@ motors_folder = objects.add_folder(f"ns={idx};s=Motors", "Motors")
 machines_folder = objects.add_folder(f"ns={idx};s=Machines", "Machines")
 
 # Create Machine object and variables
-machine = machines_folder.add_object(f"ns={idx};s=Machine", "Machine")
-MachineID = machine.add_variable(idx, "MachineID", mes_instance.MachineID)
-MachineID.set_writable()
+for i in range(1, 10):
+    machine = machines_folder.add_object(f"ns={idx};s=Machine{i}", f"Machine{i}")
+    MachineID = machine.add_variable(idx, "MachineID", f"Machine {i}")
+    MachineID.set_writable()
 
-Machine_Temperatures = machine.add_variable(idx, "Machine_Temperatures", mes_instance.Machine_Temperatures)
-Machine_Temperatures.set_writable()
+    Machine_Temperatures = machine.add_variable(idx, "Machine_Temperatures", mes_instance.Machine_Temperatures)
+    Machine_Temperatures.set_writable()
 
-Machine_Vibrations = machine.add_variable(idx, "Machine_Vibrations", mes_instance.Machine_Vibrations)
-Machine_Vibrations.set_writable()
-Machine_Uptime = machine.add_variable(idx, "Machine_Uptime", mes_instance.Machine_Uptime)
-Machine_Uptime.set_writable()
+    Machine_Vibrations = machine.add_variable(idx, "Machine_Vibrations", mes_instance.Machine_Vibrations)
+    Machine_Vibrations.set_writable()
+    Machine_Uptime = machine.add_variable(idx, "Machine_Uptime", mes_instance.Machine_Uptime)
+    Machine_Uptime.set_writable()
 
 for i in range(1, 8):
     print(f"Adding motor {i}....")

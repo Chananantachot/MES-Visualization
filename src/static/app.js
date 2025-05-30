@@ -130,61 +130,61 @@ async function updateSensersChart() {
 }
 
 function loadProductionRates() {
-    var colModel= [
-            { label: 'Production', name: 'name', width: 250 },
-            { label: 'Temperature', name: 'temperature', width: 100 },
-            { label: 'Humidity', name: 'humidity', width: 100 },
-            { label: 'Rate', name: 'actualRate', width: 100 },
-            { label: 'Predicted Rate', name: 'predictedRate', width: 150 },
-            { label: 'Shift Impact', name: 'shiftImpact', width: 100 },
-            { label: 'Tempe Impact', name: 'tempImpact', width: 100 },
-            { label: 'Humidity Impact', name: 'humidityImpact', width: 100 }
-        ]
-    InitializejqGrid("#productionTable","Production Rates Prediction", colModel ,"/productionRates/data","/productionRates/download_csv", "productionRate.csv")    
+    var colModel = [
+        { label: 'Production', name: 'name', width: 250 },
+        { label: 'Temperature', name: 'temperature', width: 100 },
+        { label: 'Humidity', name: 'humidity', width: 100 },
+        { label: 'Rate', name: 'actualRate', width: 100 },
+        { label: 'Predicted Rate', name: 'predictedRate', width: 150 },
+        { label: 'Shift Impact', name: 'shiftImpact', width: 100 },
+        { label: 'Tempe Impact', name: 'tempImpact', width: 100 },
+        { label: 'Humidity Impact', name: 'humidityImpact', width: 100 }
+    ]
+    InitializejqGrid("#productionTable", "Production Rates Prediction", colModel, "/productionRates/data", "/productionRates/download_csv", "productionRate.csv")
 }
 
 async function loadMotorSpeedData() {
     var data = await fetchData('/motor/data');
     console.log(data)
     let obj = data[0]
-    var colModel =[]
+    var colModel = []
     var lable = ''
     for (const key in obj) {
         lable = key;
         var width = 130;
         // if you want to check if the value is a number (float or int)
-        if (typeof obj[key] === 'number') 
-             width = 110;
-        
-        var col = {'name' : key , 'label' : lable , 'width' : width };
+        if (typeof obj[key] === 'number')
+            width = 110;
+
+        var col = { 'name': key, 'label': lable, 'width': width };
         colModel.push(col);
     }
-    InitializejqGrid("#motorTable","Motor Speed vs Temperature",colModel,"/motor/data", "/motor/download_csv", "motor_data.csv")
+    InitializejqGrid("#motorTable", "Motor Speed vs Temperature", colModel, "/motor/data", "/motor/download_csv", "motor_data.csv")
 }
 
 async function loadSensorData() {
     var data = await fetchData('/senser/data');
     let obj = data[0]
-    var colModel =[]
+    var colModel = []
     var lable = ''
     for (const key in obj) {
         lable = key;
         var width = 150;
         // if you want to check if the value is a number (float or int)
-        if (typeof obj[key] === 'number') 
-             width = 100;
-        
-        if (key.startsWith('Senser')){
-             var c = lable.split(' ');
-             var n = parseInt(c[1]) +1;
-             lable = 'Senser ' + n.toString();    
+        if (typeof obj[key] === 'number')
+            width = 100;
+
+        if (key.startsWith('Senser')) {
+            var c = lable.split(' ');
+            var n = parseInt(c[1]) + 1;
+            lable = 'Senser ' + n.toString();
         }
-           
-        var col = {'name' : key , 'label' : lable , 'width' : width };
+
+        var col = { 'name': key, 'label': lable, 'width': width };
         colModel.push(col);
     }
-    
-    InitializejqGrid("#sensersTable","Factor on sensor signal loss",colModel,"/senser/data", "/senser/download_csv", "senser_data.csv")
+
+    InitializejqGrid("#sensersTable", "Factor on sensor signal loss", colModel, "/senser/data", "/senser/download_csv", "senser_data.csv")
 }
 
 function loadMachineHelth() {
@@ -196,7 +196,7 @@ function loadMachineHelth() {
         { label: 'Risk Prob (%)', name: 'riskProbability', width: 150 },
         { label: '', name: 'failureRisk', width: 100, classes: 'text-center' }
     ]
-     InitializejqGrid("#machineTable","Machine Health Prediction",colModel,"/api/machines/health", "/api/machines/download_csv", "machinesHealth_data.csv")
+    InitializejqGrid("#machineTable", "Machine Health Prediction", colModel, "/api/machines/health", "/api/machines/download_csv", "machinesHealth_data.csv")
 }
 
 $(document).ready(function () {
@@ -207,22 +207,12 @@ $(document).ready(function () {
         if ($(this).hasClass('active')) $(this).find('span').html('&#x25B2;')
         else $(this).find('span').html('&#x25BC;')
     })
-
-    $('.menu-btn').click(() => {
-        var main_menu = $('.main-menu');
-        if (main_menu != null && main_menu != 'undefined'){
-            console.log('showing main menu...')
-            $('.main-menu').toggleClass('show');
-        }else{
-            console.log('main_menu not founded...')
-        }
-    });
 });
 
-async function InitializejqGrid(tableid = '', caption = '', colModels = [],  url_endpoint = '', download_url = '', filename = '' ) {
+async function InitializejqGrid(tableid = '', caption = '', colModels = [], url_endpoint = '', download_url = '', filename = '') {
     var data = await fetchData(url_endpoint);
     $(tableid).jqGrid({
-        data : data,
+        data: data,
         colModel: colModels,
         viewrecords: true,
         searching: {
@@ -234,16 +224,16 @@ async function InitializejqGrid(tableid = '', caption = '', colModels = [],  url
         rownumbers: true,
         pager: "#gridpager",
         //pager: true,
-        rowNum: 15,        
+        rowNum: 15,
         sortname: "invdate",
         sortorder: "desc",
         caption: caption
     }).jqGrid("filterToolbar");
 
-    addDownloadCSVBttonTojqGrid(tableid, download_url,filename)
+    addDownloadCSVBttonTojqGrid(tableid, download_url, filename)
 }
 
-function addDownloadCSVBttonTojqGrid(tableId, downloadUrl , filename){
+function addDownloadCSVBttonTojqGrid(tableId, downloadUrl, filename) {
     $(tableId).navGrid('#gridpager', {
         edit: false,
         add: false,
@@ -254,37 +244,35 @@ function addDownloadCSVBttonTojqGrid(tableId, downloadUrl , filename){
         position: "left",
         cloneToTop: true
     }, {}, // edit options
-    {}, // add options
-    {}, // delete options
-    {} // search options
-);    
+        {}, // add options
+        {}, // delete options
+        {} // search options
+    );
     // add Export button
-$(tableId).navButtonAdd('#gridpager', {
-    buttonicon: "ui-icon-circle-triangle-e",
-    title: "Export to CSV",
-    caption: "Export to CSV",
-    position: "last",
-    onClickButton: function() {
-      fetch(downloadUrl)
-        .then(response => response.text())
-        .then(csvText => {
-          downloadCSV(csvText, filename);
-        })
-        .catch(err => alert('Failed to download CSV: ' + err));
-    }
-});
+    $(tableId).navButtonAdd('#gridpager', {
+        buttonicon: "ui-icon-circle-triangle-e",
+        title: "Export to CSV",
+        caption: "Export to CSV",
+        position: "last",
+        onClickButton: function () {
+            fetch(downloadUrl)
+                .then(response => response.text())
+                .then(csvText => {
+                    downloadCSV(csvText, filename);
+                })
+                .catch(err => alert('Failed to download CSV: ' + err));
+        }
+    });
 }
 
 function downloadCSV(csvString, filename) {
-      const blob = new Blob([csvString], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename || 'data.csv';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-//document.querySelector('.menu-btn').addEventListener('click', () => document.querySelector('.main-menu').classList.toggle('show'));
+    const blob = new Blob([csvString], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'data.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
