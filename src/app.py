@@ -110,15 +110,15 @@ def homepage():
                         'Temperature': temperature_value,
                         'Vibration': vibration_value,
                         'Uptime': uptime_value,
-                        'Failure_Risk': np.random.choice([0, 1])
+                        'Failure_Risk': np.random.choice([0, 1], size=10)
                     })
         finally:
             client.disconnect()
 
         data = pd.DataFrame(machines)
-        #data['Failure_Risk'] = np.random.choice([0, 1], size=10)
-        for col in ['Temperature', 'Vibration', 'Uptime']:
-            data[col] = data[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
+        #data['Failure_Risk'] = np.random.choice([0, 1], size=9)
+        for col in ['Temperature', 'Vibration', 'Uptime','Failure_Risk']:
+            data[col] = data[col].apply(lambda x: x[random.randint(0,9)] if isinstance(x, (list, tuple, np.ndarray)) else x)
 
         X = data[['Temperature', 'Vibration', 'Uptime']]
         y = data['Failure_Risk']
@@ -126,11 +126,8 @@ def homepage():
 
         data['Risk_Probability'] = (model.predict_proba(X)[:, 0] * 100).round(2)
         data['Risk_Probability'] = data['Risk_Probability'].astype(float)
-        # data['Risk_Probability'] = data['Risk_Probability']
-        # data['Risk_Probability'] = data['Risk_Probability']
-        # data['Risk_Probability'] = data['Risk_Probability']
-        data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'No Risk')
-        data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'Risk')
+        data['Failure_Risk'] = data['Failure_Risk'].replace(1, 'No Risk')
+        data['Failure_Risk'] = data['Failure_Risk'].replace(0, 'Risk')
 
         datas = []
         for _, machine in data.iterrows(): 
@@ -191,18 +188,21 @@ def productionRates():
             product_nodes = products_folder.get_children()
             labels = []
             data = []
-            products = []  # Load products from the MES
+            products = []
+            allRates = []
+            total_actual_rate = 0
             df = pd.DataFrame()
             for i,product in enumerate(product_nodes):
                 product_name = product.get_child([f"{idx}:ProductName"])
                 product_name_value = product_name.get_value()
-                labels.append(product_name_value)           
-                rate_node = product.get_child([f"{idx}:ProductRate"]) 
-                rate_value = round(random.uniform(rate_node.get_value() / 2, 80),2)
-                data.append((rate_value))
-            
-                shift_node = product.get_child([f"{idx}:Shift"]) 
-                shift_value = [int(v) for v in shift_node.get_value()] 
+                labels.append(product_name_value)    
+
+                shifts_node = product.get_child([f"{idx}:Shifts"]) 
+                shifts_value = shifts_node.get_value()
+                shift = random.randint(0, 2)
+                rates = shifts_value[shift]    
+                data += rates
+
                 humidity_node =  product.get_child([f"{idx}:Humidity"])
                 humidity_value = [float(v) for v in humidity_node.get_value()] 
                 temperature_node = product.get_child([f"{idx}:Temperature"])
@@ -210,16 +210,28 @@ def productionRates():
                 vibration_node = product.get_child([f"{idx}:Vibration"])
                 vibration_value = [float(v) for v in vibration_node.get_value()] 
 
+                maximum_rate = 0
+                for s in range(3):
+                   allRates += shifts_value[s]
+                   total_actual_rate += (
+                        sum(shifts_value[s])
+                        - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + s * 2)
+                        + np.random.normal(0, 5)
+                    )  
+                   
+                maximum_rate= sum(allRates) 
+                overall_production_rate = (total_actual_rate / maximum_rate) * 100
+
                 actual_rate = (
-                    100
-                    - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift_value[random.randint(0,9)] * 2)
+                    round(sum(rates),2)
+                    - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift * 2)
                     + np.random.normal(0, 5)
                 )
 
                 products.append({
                     'name': product_name_value,
-                    'rate': rate_value,
-                    'shift': shift_value,
+                    'rate': round(sum(rates),2),
+                    'shift': shift,
                     'temperature': temperature_value,
                     'humidity': humidity_value,
                     'vibration': vibration_value,
@@ -227,66 +239,77 @@ def productionRates():
                     'Predicted_Rate': 0, 
                     'Temp_Impact': '',  # Placeholder for temperature impact
                     'Shift_Impact': '',  # Placeholder for shift impact
-                    'Humidity_Impact': ''  # Placeholder for humidity impact
-                    # Placeholder for predicted rate
+                    'Humidity_Impact': '',  # Placeholder for humidity impact
+                    'overallProductionRate' : overall_production_rate
                 })
-            df = pd.DataFrame(products)    
+            df = pd.DataFrame(products)  
+  
         finally:        
             client.disconnect()
 
-            for col in ['shift', 'temperature', 'humidity']:
-                df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
+        for col in ['shift', 'temperature', 'humidity']:
+            df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
 
-            X = df[['shift', 'temperature', 'humidity']]
-            y = df['actualRate']
-            model = LinearRegression().fit(X, y)
-            df['Predicted_Rate'] = model.predict(X)
+        X = df[['shift', 'temperature', 'humidity']]
+        y = df['actualRate']
+        model = LinearRegression().fit(X, y)
+        df['Predicted_Rate'] = model.predict(X)
+        
 
-            coefs = model.coef_
-            intercept = model.intercept_
-            df['Shift_Impact']    = df['shift'] * coefs[0]
-            df['Temp_Impact']     = df['temperature']  * coefs[1]
-            df['Humidity_Impact'] = df['humidity'] * coefs[2]  
-            df['Intercept'] = intercept
+        coefs = model.coef_
+        intercept = model.intercept_
+        df['Shift_Impact']    = df['shift'] * coefs[0]
+        df['Temp_Impact']     = df['temperature']  * coefs[1]
+        df['Humidity_Impact'] = df['humidity'] * coefs[2]  
+        df['Intercept'] = intercept
+        
+        def categorize(v):
+            if -1 <= v <= 1:
+                return 'Low'
+            elif -3 <= v < -1 or 1 < v <= 3:
+                return 'Medium'
+            else:
+                return 'High'
+
+        for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
+            df[f'{feat}_Cat'] = df[feat].apply(categorize)
+            del df[feat]
+            df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
+        # Prepare data for JSON response
+        productions = []
+        for _, row in df.iterrows():
+            if row['shift'] == 0:
+                _shift = "06:00 AM – 2:00 PM"
+            elif row['shift'] == 1:
+                _shift = "2:00 PM – 10:00 PM" 
+            else:
+                _shift = "10:00 PM – 06:00 AM"
             
-            def categorize(v):
-                if -1 <= v <= 1:
-                    return 'Low'
-                elif -3 <= v < -1 or 1 < v <= 3:
-                    return 'Medium'
-                else:
-                    return 'High'
-
-            for feat in ('Shift_Impact', 'Temp_Impact', 'Humidity_Impact'):
-                df[f'{feat}_Cat'] = df[feat].apply(categorize)
-                del df[feat]
-                df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
-            # Prepare data for JSON response
-            productions = []
-            for _, row in df.iterrows():
-                production = {
-                    'name': row['name'],
-                    'temperature': round(row['temperature'],2),
-                    'humidity': round(row['humidity'],2),
-                    # 'vibration': df['vibration'][i],
-                    'actualRate': round(row['actualRate'],2),
-                    'predictedRate': round(row['Predicted_Rate'],2),
-                    'shiftImpact': row['Shift Impact'],
-                    'tempImpact': row['Temp Impact'],
-                    'humidityImpact': row['Humidity Impact']
-                }
-                productions.append(production)
-                
-            dataset = {
-                'labels': labels,
-                'data': data
+            production = {  
+                'name': row['name'],
+                'shift' : _shift,
+                'temperature': round(row['temperature'],2),
+                'humidity': round(row['humidity'],2),
+                'actualRate': round(row['actualRate'],2),
+                'predictedRate': round(row['Predicted_Rate'],2),
+                'shiftImpact': row['Shift Impact'],
+                'tempImpact': row['Temp Impact'],
+                'humidityImpact': row['Humidity Impact'],
+                'overallProductionRate': round(row['overallProductionRate'],2),
+                'progressbarText' : f'style=width:{round(row['overallProductionRate'],0)}%;'
             }
-            csv_data = df.to_csv(index=False)
-            if cache is not None:
-                cache.set('production_rates', json.dumps(productions), ex=60*60)  # Cache for 1 hour
-                cache.set('production_chart_data', json.dumps(dataset), ex=60*60)
-                cache.set("production_csv", csv_data ,ex=60*60)  # Cache CSV data for download
-                
+            productions.append(production)
+            
+        dataset = {
+            'labels': labels,
+            'data': data
+        }
+        csv_data = df.to_csv(index=False)
+        if cache is not None:
+            cache.set('production_rates', json.dumps(productions), ex=60*60)  # Cache for 1 hour
+            cache.set('production_chart_data', json.dumps(dataset), ex=60*60)
+            cache.set("production_csv", csv_data ,ex=60*60)  # Cache CSV data for download
+            
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/productionRates/download_csv':
             print(csv_data)
@@ -304,7 +327,7 @@ def productionRates():
                 return jsonify(dataset)
     else:        
         current_user = get_jwt_identity() 
-        return render_template('index.html',current_user = current_user)
+        return render_template('index.html', datas = productions , current_user = current_user)
 
 @app.route("/iotDevices")
 @jwt_required()

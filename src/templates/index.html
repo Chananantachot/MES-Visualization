@@ -8,12 +8,35 @@
 {% block content %}
 <h1>Visualization of MES Production Rate Simulation</h1>
 <canvas id="myChart"></canvas>
-
-<h3>Production Slowdown Analysis</h3>
-<p>This analysis compares actual vs. predicted production rates and identifies slowdown factors.</p>
+<em style="font-size: small;">This analysis compares actual vs. predicted production rates and identifies slowdown factors.</em>
 <table id="productionTable" class="table table-striped table-bordered">
 </table> 
 <div id="gridpager"></div>
+ <div class="dashboard hide-on-large">
+ {% for product in datas %}
+   {% if product.actualRate >= product.predictedRate %}
+    <div class="panel high">
+        <h2>{{product.name}}</h2>
+        <div class="arrow">{{product.actualRate}} <b>(↑)</b> {{ product.predictedRate }} units</div>
+        <div class="amount">{{ product.shift }} : {{ product.shiftImpact }}</div>
+        <div class="amount">{{ product.temperature }}°C : {{ product.tempImpact }} </div>
+        <div class="amount">{{ product.humidity }} : {{ product.humidityImpact }}</div>
+        <div class="percentage">Overall Production Rate {{ product.overallProductionRate }}%</div>
+        <div class="progress-bar" {{ product.progressbarText }}></div>
+    </div>
+  {% else %}
+      <div class="panel low">
+        <h2>{{product.name}}</h2>
+        <div class="arrow">{{product.actualRate}} (↓) {{ product.predictedRate }} units</div>
+        <div class="amount">{{ product.shift }} : {{ product.shiftImpact }}</div>
+        <div class="amount">{{ product.temperature }}°C : {{ product.tempImpact }}</div>
+        <div class="amount">{{ product.humidity }} : {{ product.humidityImpact }}</div>
+        <div class="percentage">Overall Production Rate {{ product.overallProductionRate }}%</div>
+        <div class="progress-bar" {{ product.progressbarText }}></div>
+    </div>
+  {% endif %}  
+{% endfor %}
+ </div>
 {% endblock %}
 {% block scripts %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>

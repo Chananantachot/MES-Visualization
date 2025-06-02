@@ -73,11 +73,8 @@ for i,item in enumerate(products):
     product = products_folder.add_object(f"ns={idx};s={item['product_name']}", f"{item['product_name']}")
     product_name = product.add_variable(idx, "ProductName", item['product_name'])
     product_name.set_writable()
-    product_rate = product.add_variable(idx, "ProductRate", item['productRate'])
-    product_rate.set_writable()
-
-    product_shift = product.add_variable(idx, "Shift", mes_instance.production_shift)
-    product_shift.set_writable()
+    Shifts = product.add_variable(idx, "Shifts", item['shifts'])
+    Shifts.set_writable()
 
     product_temperature = product.add_variable(idx, "Temperature", mes_instance.production_temperature)
     product_temperature.set_writable()

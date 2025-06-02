@@ -11,17 +11,19 @@
        {% if machine.failureRisk == 'No Risk' %} 
           <div class="panel daily">
             <h2>{{machine.machineID}}</h2>
-            <div class="arrow">{{machine.failureRisk}} (↓)</div>
+            <div class="arrow">{{machine.failureRisk}} (↓) {{ machine.riskProbability }}%</div>
+            <div class="amount">Uptime {{ machine.uptime }}%</div>
+            <div class="amount">Vibration {{ machine.vibration }} {Hz} </div>
             <div class="amount">Tempe {{ machine.temperature }} (°C)</div>
-            <div class="percentage">Risk prob {{ machine.riskProbability }}%</div>
             <div class="progress-bar" {{ machine.htmlStyleText }}></div>
         </div>
         {% else %}
         <div class="panel monthly">
             <h2>{{machine.machineID}}</h2>
-             <div class="arrow">{{machine.failureRisk}} (↑)</div>
+            <div class="arrow">{{machine.failureRisk}} (↑) {{ machine.riskProbability }}%</div>
+            <div class="amount">Uptime {{ machine.uptime }}%</div>
+            <div class="amount">Vibration {{ machine.vibration }} {Hz} </div>
             <div class="amount">Tempe {{ machine.temperature }} (°C)</div>
-            <div class="percentage">Risk prob {{ machine.riskProbability }}%</div>
             <div class="progress-bar" {{ machine.htmlStyleText }}></div>
         </div>
         {% endif %}

@@ -40,11 +40,16 @@ class mes:
         data_path = os.path.join("static", "data", "MOCK_DATA.json")
         with open(data_path, "r") as f:
             _data = json.load(f)
+            shifts = []
+            for _ in range(3):
+                rates = [random.uniform(20,200) for _ in range(8)]
+                shifts.append(rates)      
+
             unique_products = []
             products = []
             for _item in _data['products']:
                 pname = _item['title'].strip().lower()
                 if pname not in unique_products:
                     unique_products.append(pname)
-                    products.append({ 'product_name' : pname, 'productRate': _item['price'] })
+                    products.append({ 'product_name' : pname, 'shifts': shifts })
         return products  
