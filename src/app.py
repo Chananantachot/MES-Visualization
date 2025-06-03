@@ -143,8 +143,9 @@ def homepage():
             datas.append(m)
 
         csv_data = data.to_csv(index=False)
-        cache.set("machine_csv_data", csv_data, ex=60*60)
-        cache.set("machine_data", json.dumps(datas), ex=60*60)    
+        if cache is not None:
+            cache.set("machine_csv_data", csv_data, ex=60*60)
+            cache.set("machine_data", json.dumps(datas), ex=60*60)    
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/api/machines/download_csv':
@@ -189,8 +190,7 @@ def productionRates():
             labels = []
             data = []
             products = []
-            allRates = []
-            total_actual_rate = 0
+         
             df = pd.DataFrame()
             for i,product in enumerate(product_nodes):
                 product_name = product.get_child([f"{idx}:ProductName"])
@@ -210,37 +210,40 @@ def productionRates():
                 vibration_node = product.get_child([f"{idx}:Vibration"])
                 vibration_value = [float(v) for v in vibration_node.get_value()] 
 
+                allRates = []
+                total_actual_rate = 0
                 maximum_rate = 0
+                t = temperature_value[random.randint(0,9)]
+                h = humidity_value[random.randint(0,9)]
                 for s in range(3):
-                   allRates += shifts_value[s]
-                   total_actual_rate += (
-                        sum(shifts_value[s])
-                        - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + s * 2)
-                        + np.random.normal(0, 5)
-                    )  
-                   
-                maximum_rate= sum(allRates) 
-                overall_production_rate = (total_actual_rate / maximum_rate) * 100
-
-                actual_rate = (
-                    round(sum(rates),2)
-                    - (temperature_value[random.randint(0,9)] * 0.5 + humidity_value[random.randint(0,9)] * 0.2 + shift * 2)
-                    + np.random.normal(0, 5)
-                )
-
+                    allRates += shifts_value[s]
+                    if s == shift: 
+                        actual_rate = (
+                            round(sum(rates),2)
+                            - (t * 0.5 + h * 0.2 + s * 2)
+                            + np.random.normal(0, 5)
+                        )
+                    else:    
+                        total_actual_rate += (
+                                sum(shifts_value[s])
+                                - (t * 0.5 + h * 0.2 + s * 2)
+                                + np.random.normal(0, 5)
+                            )  
                 products.append({
                     'name': product_name_value,
                     'rate': round(sum(rates),2),
                     'shift': shift,
-                    'temperature': temperature_value,
-                    'humidity': humidity_value,
+                    'temperature': t,
+                    'humidity': h,
                     'vibration': vibration_value,
                     'actualRate': actual_rate, 
                     'Predicted_Rate': 0, 
                     'Temp_Impact': '',  # Placeholder for temperature impact
                     'Shift_Impact': '',  # Placeholder for shift impact
                     'Humidity_Impact': '',  # Placeholder for humidity impact
-                    'overallProductionRate' : overall_production_rate
+                    'actual_rates':  round(total_actual_rate,2),
+                    'maximum_rate' : round(sum(allRates),2),
+                    'overallProductionRate' : 0 #overall_production_rate
                 })
             df = pd.DataFrame(products)  
   
@@ -250,11 +253,17 @@ def productionRates():
         for col in ['shift', 'temperature', 'humidity']:
             df[col] = df[col].apply(lambda x: x[0] if isinstance(x, (list, tuple, np.ndarray)) else x)
 
+        X = df[['temperature', 'humidity']]
+        y = df['actual_rates']
+        model = LinearRegression().fit(X, y)
+        df['Predicted_Rates'] = model.predict(X)        
+        df['overallProductionRate'] = (df['Predicted_Rates'] / df['maximum_rate']) * 100       
+
+
         X = df[['shift', 'temperature', 'humidity']]
         y = df['actualRate']
         model = LinearRegression().fit(X, y)
         df['Predicted_Rate'] = model.predict(X)
-        
 
         coefs = model.coef_
         intercept = model.intercept_
@@ -275,6 +284,7 @@ def productionRates():
             df[f'{feat}_Cat'] = df[feat].apply(categorize)
             del df[feat]
             df[feat.replace("_", " ")] = df.pop(f'{feat}_Cat')  
+
         # Prepare data for JSON response
         productions = []
         for _, row in df.iterrows():
@@ -296,7 +306,7 @@ def productionRates():
                 'tempImpact': row['Temp Impact'],
                 'humidityImpact': row['Humidity Impact'],
                 'overallProductionRate': round(row['overallProductionRate'],2),
-                'progressbarText' : f'style=width:{round(row['overallProductionRate'],0)}%;'
+                'progressbarText' : f'style=width:{(row['overallProductionRate'])}%;'
             }
             productions.append(production)
             
@@ -312,7 +322,6 @@ def productionRates():
             
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/productionRates/download_csv':
-            print(csv_data)
             # Create a Response with CSV mime type and attachment header
             return Response(
                 csv_data,
@@ -451,6 +460,9 @@ def senser():
     datasets = None
     sensors = None
     csv_data = None
+    chart_data = None
+    sensor_data = None
+    
     if cache is not None:
         csv_data = cache.get("sensor_csv") if cache.exists("sensor_csv") else None
         sensor_data = cache.get("senser_data") if cache.exists("senser_data") else None
