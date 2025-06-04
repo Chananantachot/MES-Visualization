@@ -57,27 +57,16 @@ for i in range(1, 6):
     sensor_vibration = sensor.add_variable(idx, "Vibration", mes_instance.sensor_vibration)
     sensor_vibration.set_writable()
 
-    mean, std, signal = mes_instance.generate_signal_data()
-    sensor_mean = sensor.add_variable(idx, "mean", mean)
-    sensor_mean.set_writable()
-
-    sensor_std = sensor.add_variable(idx, "std", std)
-    sensor_std.set_writable()
+    signal = mes_instance.generate_signal_data()
 
     sensor_signal = sensor.add_variable(idx, "Signal", signal.tolist())
     sensor_signal.set_writable()
 
     sensor_age = sensor.add_variable(idx, "Age", mes_instance.sensor_age)
 
-    # sensor_age.set_writable()
-    # n = len(sensor_signals)
-    # sensor_signal_loss = sensor.add_variable(idx, "SignalLoss",[mes_instance.sensor_signal_loss() for _ in range(n)])
-    # sensor_signal_loss.set_writable()
-
 # Create Product objects and variables
 products = mes.load_products()
 for i,item in enumerate(products):
-    print(f"Adding Product {i+1}: {item['product_name']}")
     product = products_folder.add_object(f"ns={idx};s={item['product_name']}", f"{item['product_name']}")
     product_name = product.add_variable(idx, "ProductName", item['product_name'])
     product_name.set_writable()

@@ -363,35 +363,35 @@ def motorSpeed():
         dataset = json.loads(dataset)
     else:
      # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
+        df = pd.DataFrame()
+        datasets = []
         client = Client("opc.tcp://0.0.0.0:4840/server/")
         try:
             client.connect()
             idx = 2
             motor = client.get_node(f"ns={idx};s=Motors")
             motor_nodes = motor.get_children()  # Get all motor nodes
-            df = pd.DataFrame()
-            all_motor_speeds = []
+            all_speeds = []
             for j, motor in enumerate(motor_nodes):
                 temperatures = motor.get_child([f"{idx}:Temperatures"]).get_value()
                 motor_speeds = motor.get_child([f"{idx}:MotorSpeeds"]).get_value()
-
+            
                 df[f'Motor {j+1}'] = np.round(temperatures, 2)  
-                all_motor_speeds.append(motor_speeds) 
+                df[f'Actual Speed {j+1}'] = motor_speeds
+                all_speeds += motor_speeds
+
         finally:
             client.disconnect()
 
-        actual_speed = np.array(all_motor_speeds[0])
-
         df_final = df.copy()
-        df_final['Actual Speed'] = actual_speed
 
         X = df_final[[col for col in df_final.columns if col.startswith("Motor")]].values
-        y = df_final['Actual Speed'].values
+        y = df_final[[col for col in df_final.columns if col.startswith("Actual Speed")]].mean(axis=1).values
 
         model = LinearRegression()
         model.fit(X, y)
 
-        predicted_speed = model.predict(X).round(2)
+        predicted_speed = model.predict(X)
         df_final['Predicted Speed'] = predicted_speed
 
         model_eq = f"Speed = {model.coef_[0]:.2f} * Temp + {model.intercept_:.2f}"
@@ -403,7 +403,7 @@ def motorSpeed():
             'datasets': [
                 {
                     'label': 'Actual Data',
-                    'data': motor_speeds,
+                    'data': all_speeds,
                     'yAxisID': 'y'
                 },
                 {
@@ -473,61 +473,57 @@ def senser():
         anomaly_percentages = json.loads(anomaly_percentages)
         print("Using cacheds data...")     
     else:
+        anomaly_percentages = []
         # Fetch sensor data from OPC UA server (simulate if unavailable)
-        num_sensors = 5
-        num_samples = 980  # Data points per sensor
-        anomaly_counts = np.zeros(num_sensors)
         client = Client("opc.tcp://0.0.0.0:4840/server/")
         try:
             client.connect()
             idx = 2
+
             sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
             sensor_nodes = sensors_folder.get_children() 
+
             df = pd.DataFrame()
             datasets = []
+
             for j, sensor in enumerate(sensor_nodes):
                 signal_node = sensor.get_child([f"{idx}:Signal"]) 
                 signals = signal_node.get_value()
 
-                mean_node = sensor.get_child([f"{idx}:mean"]) 
-                mean = mean_node.get_value()
-
-                std_node = sensor.get_child([f"{idx}:std"]) 
-                std = std_node.get_value()
-
-                # Compute anomaly threshold
-                threshold_low, threshold_high = mean - 3*std, mean + 3*std
-                
-                # Detect anomalies
-                _signals = np.array(signals)
-                anomalies = (_signals < threshold_low) | (_signals > threshold_high)
-                anomaly_counts[j] = np.sum(anomalies)
-
-                df[f'Senser {j}'] = signals
+                df[f'Sensor {j}'] = signals
               
                 data = []
                 for i, signal in enumerate(signals):
                     data.append({ 'x': i, 'y': signal }) 
 
                 datasets.append({
-                    'label': f'Senser {j+1}',
+                    'label': f'Sensor {j+1}',
                     'borderWidth': 1,
                     'radius': 0,
                     'data': data
                 }) 
            
-            # Calculate anomaly percentage for each sensor
-            anomaly_percentages = (anomaly_counts / num_samples) * 100
-            anomaly_percentages = anomaly_percentages.tolist()
-            for i, anomaly_percentage in enumerate(anomaly_percentages):
-                anomaly_percentages[i] = round(anomaly_percentage)
+            for sensor in df.columns:  # Iterate through each sensor column
+                total_readings = len(df[sensor])  # Total data points per sensor
 
+                # Calculate rolling mean and std for dynamic thresholding (APPLY ONLY TO SENSOR COLUMN)
+                rolling_mean = df[sensor].rolling(window=20).mean()
+                rolling_std = df[sensor].rolling(window=20).std()
+
+                # Dynamic anomaly detection: Signals deviating beyond rolling mean ± 3*rolling_std
+                anomalies = (df[sensor] < rolling_mean - 2*rolling_std) | (df[sensor] > rolling_mean + 2*rolling_std)
+
+                # Count anomalies for percentage calculation
+                anomaly_percentage = (anomalies.sum() / total_readings) * 100  # Convert to percentage
+                # Store results
+                anomaly_percentages.append(round(anomaly_percentage))  
             sensor_data = df.copy()
         
             model = IsolationForest(contamination=0.1).fit(sensor_data)
             df['Anomaly Score'] = model.decision_function(sensor_data)
             df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'}).tolist()
             df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
+
             csv_data = df.to_csv(index=False)
             sensors = df.to_dict(orient='records')
 

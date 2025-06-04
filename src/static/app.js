@@ -150,14 +150,17 @@ async function loadMotorSpeedData() {
     var colModel = []
     var lable = ''
     for (const key in obj) {
-        lable = key;
-        var width = 130;
-        // if you want to check if the value is a number (float or int)
-        if (typeof obj[key] === 'number')
-            width = 110;
+        if (!key.startsWith('Actual Speed'))
+        {
+            lable = key;
+            var width = 130;
+            // if you want to check if the value is a number (float or int)
+            if (typeof obj[key] === 'number')
+                width = 110;
 
-        var col = { 'name': key, 'label': lable, 'width': width };
-        colModel.push(col);
+            var col = { 'name': key, 'label': lable, 'width': width };
+            colModel.push(col);
+        }    
     }
     InitializejqGrid("#motorTable", "Motor Speed vs Temperature", colModel, "/motor/data", "/motor/download_csv", "motor_data.csv")
 }
@@ -174,7 +177,7 @@ async function loadSensorData() {
         if (typeof obj[key] === 'number')
             width = 100;
 
-        if (key.startsWith('Senser')) {
+        if (key.startsWith('Sensor')) {
             var c = lable.split(' ');
             var n = parseInt(c[1]) + 1;
             lable = 'Senser ' + n.toString();
