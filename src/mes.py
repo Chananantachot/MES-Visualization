@@ -28,12 +28,23 @@ class mes:
         self.production_shift = np.random.choice([1, 2, 3], size=10).tolist() 
 
     def generate_signal_data(self):
-        mean, std, tail = random.uniform(200, 700), random.uniform(20, 50), [200, 300]
-        signal_data = np.random.normal(mean, std, 980)
-        signal_data = np.append(signal_data, tail)
-        signal_data = np.array(signal_data, dtype=float).flatten()
-        signal_data = [round(float(x), 2) for x in signal_data]
-        return signal_data
+        # mean, std, tail = random.uniform(200, 700), random.uniform(20, 50), [200, 300]
+        # signal_data = np.random.normal(mean, std, 980)
+        # signal_data = np.append(signal_data, tail)
+        # signal_data = np.array(signal_data, dtype=float).flatten()
+        # signal_data = [round(float(x), 2) for x in signal_data]
+        # Define parameters
+        mean = random.uniform(200, 700)  # Baseline mean value
+        std = random.uniform(20, 50)  # Standard deviation
+        num_samples = 980  # Data points
+        trend = np.linspace(mean - 20, mean + 20, num_samples)  # Simulating slow drift
+        noise = np.random.normal(0, std, num_samples)  # Gaussian noise
+
+        # Generate signal
+        signal = trend + noise
+        signal = np.clip(signal, 200, 700)  # Clipping to realistic bounds
+
+        return mean, std, signal
 
     @staticmethod
     def load_products():

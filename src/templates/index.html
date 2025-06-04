@@ -19,20 +19,24 @@
         <h2>{{product.name}}</h2>
         <div class="arrow">{{product.actualRate}} <b>(↑)</b> {{ product.predictedRate }} units</div>
         <div class="amount">{{ product.shift }} : {{ product.shiftImpact }}</div>
-        <div class="amount">{{ product.temperature }}°C : {{ product.tempImpact }} </div>
-        <div class="amount">{{ product.humidity }} : {{ product.humidityImpact }}</div>
-        <div class="percentage">Overall Production Rate {{ product.overallProductionRate }}%</div>
-        <div class="progress-bar" {{ product.progressbarText }}></div>
+        <div class="amount">🌡️ Temp: {{ product.temperature }}°C ({{ product.tempImpact }}) </div>
+        <div class="amount">💧 Humidity: {{ product.humidity }} ({{ product.humidityImpact }})</div>
+        <div class="percentage">🔧 Efficiency Rate (Actual vs. Max Possible)</div>
+        <div class="d-flex justify-content-center">
+          <div role="progressbar" aria-valuenow="{{ product.overallProductionRate }}" aria-valuemin="0" aria-valuemax="100" style="--value: {{ product.overallProductionRate }}"></div>
+        </div>
     </div>
   {% else %}
       <div class="panel low">
         <h2>{{product.name}}</h2>
         <div class="arrow">{{product.actualRate}} (↓) {{ product.predictedRate }} units</div>
         <div class="amount">{{ product.shift }} : {{ product.shiftImpact }}</div>
-        <div class="amount">{{ product.temperature }}°C : {{ product.tempImpact }}</div>
-        <div class="amount">{{ product.humidity }} : {{ product.humidityImpact }}</div>
-        <div class="percentage">Overall Production Rate {{ product.overallProductionRate }}%</div>
-        <div class="progress-bar" {{ product.progressbarText }}></div>
+        <div class="amount">🌡️ Temp: {{ product.temperature }}°C ({{ product.tempImpact }})</div>
+        <div class="amount">💧 Humidity: {{ product.humidity }} ({{ product.humidityImpact }})</div>
+        <div class="percentage">🔧 Efficiency Rate (Actual vs. Max Possible)</div>
+        <div class="d-flex justify-content-center">
+          <div role="progressbar" aria-valuenow="{{ product.overallProductionRate }}" aria-valuemin="0" aria-valuemax="100" style="--value: {{ product.overallProductionRate }}"></div>
+        </div>
     </div>
   {% endif %}  
 {% endfor %}

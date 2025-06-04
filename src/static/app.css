@@ -35,6 +35,56 @@ body {
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
 
+@keyframes progress {
+  0% { --percentage: 0; }
+  100% { --percentage: var(--value); }
+}
+
+@property --percentage {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+[role="progressbar"] {
+  --percentage: var(--value);
+  --primary: #369;
+  --secondary: #adf;
+  --size: 150px;
+  animation: progress 2s 0.5s forwards;
+  width: var(--size);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+}
+
+[role="progressbar"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: conic-gradient(var(--primary) calc(var(--percentage) * 1%), var(--secondary) 0);
+  mask: radial-gradient(white 55%, transparent 0);
+  mask-mode: alpha;
+  -webkit-mask: radial-gradient(#0000 55%, #000 0);
+  -webkit-mask-mode: alpha;
+}
+
+[role="progressbar"]::after {
+  counter-reset: percentage var(--value);
+  content: counter(percentage) '%';
+  font-family: Helvetica, Arial, sans-serif;
+  font-size: calc(var(--size) / 5);
+  color: var(--primary);
+}
+
+
+
 .dashboard {
   display: grid;
   width: 100%;
@@ -44,6 +94,78 @@ body {
   margin-right: auto;
   margin-bottom: 20px;
   margin-top: 20px;
+}
+
+.progress-section {
+  width: 100%;
+  max-width: 65vw;
+  border-radius: 40px;
+  background: #ffffff;
+  /* padding: 1rem 2rem; */
+  margin: 0 auto;
+  box-shadow: 0px 1px 10px 0px #0000001f;
+
+  img {
+    width: 300px;
+    display: block;
+    margin: 20px auto;
+  }
+  .title {
+    font-weight: 700;
+    font-size: 3rem;
+    text-transform: uppercase;
+    text-align: center;
+    padding-bottom: 20px;
+  }
+  .task-progress {
+    margin: 1rem 0;
+  }
+
+  .task-progress p {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #ffffff;
+    font-size: 3rem;
+  }
+
+  span {
+    color: #525252;
+  }
+
+  .progress {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    border: none;
+    border-radius: 10px;
+    height: 0.8rem;
+  }
+
+  .progress::-webkit-progress-bar {
+    background-color: #f0f0f0;
+  }
+
+  .progress::-webkit-progress-bar,
+  .progress::-webkit-progress-value {
+    border-radius: 10px;
+  }
+
+  .progress::-moz-progress-bar {
+    border-radius: 10px;
+  }
+
+  .progress1::-webkit-progress-value {
+    background: #185ee2;
+  }
+
+  .progress2::-webkit-progress-value {
+    background: #f44336;
+  }
+
+  .progress3::-webkit-progress-value {
+    background: #18e23c;
+  }
 }
 
 .panel {

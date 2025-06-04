@@ -12,19 +12,23 @@
           <div class="panel daily">
             <h2>{{machine.machineID}}</h2>
             <div class="arrow">{{machine.failureRisk}} (↓) {{ machine.riskProbability }}%</div>
-            <div class="amount">Uptime {{ machine.uptime }}%</div>
-            <div class="amount">Vibration {{ machine.vibration }} {Hz} </div>
-            <div class="amount">Tempe {{ machine.temperature }} (°C)</div>
-            <div class="progress-bar" {{ machine.htmlStyleText }}></div>
+            <div class="amount">⏱️ Uptime {{ machine.uptime }}%</div>
+            <div class="amount">🌀 Vibration {{ machine.vibration }} {Hz} </div>
+            <div class="amount">🌡️ Temp: {{ machine.temperature }} (°C)</div>
+            <div class="d-flex justify-content-center">
+              <div role="progressbar" aria-valuenow="{{ machine.riskProbability }}" aria-valuemin="0" aria-valuemax="100" style="--value: {{ machine.riskProbability  }}"></div>
+            </div>
         </div>
         {% else %}
         <div class="panel monthly">
             <h2>{{machine.machineID}}</h2>
             <div class="arrow">{{machine.failureRisk}} (↑) {{ machine.riskProbability }}%</div>
-            <div class="amount">Uptime {{ machine.uptime }}%</div>
-            <div class="amount">Vibration {{ machine.vibration }} {Hz} </div>
-            <div class="amount">Tempe {{ machine.temperature }} (°C)</div>
-            <div class="progress-bar" {{ machine.htmlStyleText }}></div>
+            <div class="amount">⏱️ Uptime {{ machine.uptime }}%</div>
+            <div class="amount">🌀 Vibration {{ machine.vibration }} {Hz} </div>
+            <div class="amount">🌡️ Temp: {{ machine.temperature }} (°C)</div>
+            <div class="d-flex justify-content-center">
+              <div role="progressbar" aria-valuenow="{{ machine.riskProbability }}" aria-valuemin="0" aria-valuemax="100" style="--value: {{ machine.riskProbability }}"></div>
+          </div>
         </div>
         {% endif %}
   {% endfor %}

@@ -56,9 +56,17 @@ for i in range(1, 6):
 
     sensor_vibration = sensor.add_variable(idx, "Vibration", mes_instance.sensor_vibration)
     sensor_vibration.set_writable()
-    
-    sensor_signal = sensor.add_variable(idx, "Signal", mes_instance.generate_signal_data())
+
+    mean, std, signal = mes_instance.generate_signal_data()
+    sensor_mean = sensor.add_variable(idx, "mean", mean)
+    sensor_mean.set_writable()
+
+    sensor_std = sensor.add_variable(idx, "std", std)
+    sensor_std.set_writable()
+
+    sensor_signal = sensor.add_variable(idx, "Signal", signal.tolist())
     sensor_signal.set_writable()
+
     sensor_age = sensor.add_variable(idx, "Age", mes_instance.sensor_age)
 
     # sensor_age.set_writable()

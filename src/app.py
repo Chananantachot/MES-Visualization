@@ -137,8 +137,7 @@ def homepage():
                 'vibration': round(machine['Vibration'],2),
                 'uptime': round(machine['Uptime'],2),
                 'failureRisk': machine['Failure_Risk'],
-                'riskProbability': round(machine['Risk_Probability'],2),
-                'htmlStyleText': f'style=width:{round(machine['Risk_Probability'],0)}%;'
+                'riskProbability': round(machine['Risk_Probability'])
             }
             datas.append(m)
 
@@ -305,8 +304,7 @@ def productionRates():
                 'shiftImpact': row['Shift Impact'],
                 'tempImpact': row['Temp Impact'],
                 'humidityImpact': row['Humidity Impact'],
-                'overallProductionRate': round(row['overallProductionRate'],2),
-                'progressbarText' : f'style=width:{(row['overallProductionRate'])}%;'
+                'overallProductionRate': round(row['overallProductionRate'])
             }
             productions.append(production)
             
@@ -462,43 +460,54 @@ def senser():
     csv_data = None
     chart_data = None
     sensor_data = None
-    
+    anomaly_percentages = None
     if cache is not None:
         csv_data = cache.get("sensor_csv") if cache.exists("sensor_csv") else None
         sensor_data = cache.get("senser_data") if cache.exists("senser_data") else None
         chart_data = cache.get('senser_chart_data') if cache.exists('senser_chart_data') else None
-    
+        anomaly_percentages = cache.get('anomaly_percentages') if cache.exists('anomaly_percentages') else None
+
     if chart_data and sensor_data:
         sensors = json.loads(sensor_data)
         datasets = json.loads(chart_data)
+        anomaly_percentages = json.loads(anomaly_percentages)
         print("Using cacheds data...")     
     else:
         # Fetch sensor data from OPC UA server (simulate if unavailable)
+        num_sensors = 5
+        num_samples = 980  # Data points per sensor
+        anomaly_counts = np.zeros(num_sensors)
         client = Client("opc.tcp://0.0.0.0:4840/server/")
         try:
             client.connect()
             idx = 2
             sensors_folder = client.get_node(f"ns={idx};s=Sensors") 
             sensor_nodes = sensors_folder.get_children() 
-            n = len(sensor_nodes)
-            values = [random.uniform(random.randint(-100,-1), random.randint(1,100)) for _ in range(n)]
-
-            #values = [random.uniform(-50, 60), random.uniform(-20, 40),random.uniform(-10, 30)]
             df = pd.DataFrame()
             datasets = []
             for j, sensor in enumerate(sensor_nodes):
                 signal_node = sensor.get_child([f"{idx}:Signal"]) 
                 signals = signal_node.get_value()
 
-                df[f'Senser {j}'] = signals
-                df[f'Senser {j}'] = df[f'Senser {j}'].apply(lambda x: round(float(x + values[j] * 10), 2))
+                mean_node = sensor.get_child([f"{idx}:mean"]) 
+                mean = mean_node.get_value()
 
+                std_node = sensor.get_child([f"{idx}:std"]) 
+                std = std_node.get_value()
+
+                # Compute anomaly threshold
+                threshold_low, threshold_high = mean - 3*std, mean + 3*std
+                
+                # Detect anomalies
+                _signals = np.array(signals)
+                anomalies = (_signals < threshold_low) | (_signals > threshold_high)
+                anomaly_counts[j] = np.sum(anomalies)
+
+                df[f'Senser {j}'] = signals
+              
                 data = []
-               
-                for i, value in enumerate(signals):
-                        value += values[j] * 10
-                        s = { 'x': i, 'y': value }
-                        data.append(s) 
+                for i, signal in enumerate(signals):
+                    data.append({ 'x': i, 'y': signal }) 
 
                 datasets.append({
                     'label': f'Senser {j+1}',
@@ -507,28 +516,32 @@ def senser():
                     'data': data
                 }) 
            
+            # Calculate anomaly percentage for each sensor
+            anomaly_percentages = (anomaly_counts / num_samples) * 100
+            anomaly_percentages = anomaly_percentages.tolist()
+            for i, anomaly_percentage in enumerate(anomaly_percentages):
+                anomaly_percentages[i] = round(anomaly_percentage)
+
             sensor_data = df.copy()
         
             model = IsolationForest(contamination=0.1).fit(sensor_data)
             df['Anomaly Score'] = model.decision_function(sensor_data)
             df['Anomaly Flag'] = pd.Series(model.predict(sensor_data)).map({1: 'Normal', -1: 'Anomaly'}).tolist()
-            #df['name'] = f"Senser {j+1}"
             df['Anomaly Score'] =  df['Anomaly Score'].round(2).tolist()
             csv_data = df.to_csv(index=False)
             sensors = df.to_dict(orient='records')
 
             if cache is not None:
-              # Cache for 1 hour
-                cache.set("sensor_csv", csv_data)  
+                cache.set("sensor_csv", csv_data, ex=60*60)  
                 cache.set('senser_data', json.dumps(sensors), ex=60*60)
                 cache.set('senser_chart_data', json.dumps(datasets), ex=60*60) 
+                cache.set('anomaly_percentages', json.dumps(anomaly_percentages), ex=60*60) 
+                
         finally:
             client.disconnect()
 
     if request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']:
         if request.path == '/senser/download_csv':
-           
-            # Create a Response with CSV mime type and attachment header
             return Response(
                 csv_data,
                 mimetype='text/csv',
@@ -548,7 +561,7 @@ def senser():
             return render_template('error.html', msg= "You are not authorized to access this page.")    
         
         current_user = get_jwt_identity()   
-        return render_template('senser.html',current_user = current_user)
+        return render_template('senser.html',current_user = current_user, datas=anomaly_percentages)
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):

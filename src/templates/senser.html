@@ -11,6 +11,17 @@
 <table id="sensersTable" class="table table-striped table-bordered"> 
 </table>
 <div id="gridpager"></div>
+<div class="dashboard hide-on-large">
+ {% for value in datas %}
+    <div class="panel high">
+        <h4>Sensor {{loop.index}}</h4>
+        <div class="percentage">🔧 Effective signals vs. anomalies</div>
+        <div class="d-flex justify-content-center">
+          <div role="progressbar" aria-valuenow="{{ value }}" aria-valuemin="0" aria-valuemax="100" style="--value: {{ value }}"></div>
+        </div>
+    </div>
+{% endfor %}
+
 {% endblock %}
 {% block scripts %}
 <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> -->
