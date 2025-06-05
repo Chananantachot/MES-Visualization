@@ -37,12 +37,12 @@ for i in range(1, 10):
     Machine_Uptime.set_writable()
 
 for i in range(1, 8):
-    print(f"Adding motor {i}....")
 # Create Motor object and variables
+    speeds, temperatures = mes_instance.generate_MotorSpeed_and_Temperatures()
     motor = motors_folder.add_object(f"ns={idx};s=Motor{i}", f"Motor{i}")
-    motor_temperature = motor.add_variable(idx, "Temperatures",mes_instance.motor_temperatures)
+    motor_temperature = motor.add_variable(idx, "Temperatures",temperatures)
     motor_temperature.set_writable()
-    motor_speed = motor.add_variable(idx, "MotorSpeeds", mes_instance.motor_speed)
+    motor_speed = motor.add_variable(idx, "MotorSpeeds", speeds)
     motor_speed.set_writable()
 
 # Create Sensor objects and variables

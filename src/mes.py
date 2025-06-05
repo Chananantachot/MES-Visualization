@@ -5,9 +5,22 @@ import numpy as np
 
 class mes:
     def __init__(self):
-        self.motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
-        rates = [5000 - (temp * 30) + np.random.normal(0, 100) for temp in self.motor_temperatures]
-        self.motor_speed = [round(random.uniform(rate / 2, 8000), 0) for rate in rates]
+
+        # Define parameters
+        # time_steps = 100  # Number of readings
+        # base_speed = 5000  # Typical motor speed (RPM)
+        # _std = np.random.uniform(5, 25)
+        # fluctuation = np.random.normal(0, _std, time_steps)  # Small natural speed variations
+        # anomaly_spikes = np.random.choice([0, -100, +150], size=time_steps, p=[0.98, 0.01, 0.01])  # Occasional faults
+
+        # # Generate motor speed signal
+        # motor_speed = base_speed + fluctuation + anomaly_spikes
+        # self.motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
+        # self.motor_speed = motor_speed.tolist()
+
+        # self.motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
+        # rates = [5000 - (temp * 30) + np.random.normal(0, 100) for temp in self.motor_temperatures]
+        # self.motor_speed = [round(random.uniform(rate / 2, 8000), 0) for rate in rates]
 
         self.sensor_temperatures = [random.uniform(70, 10) for _ in range(100)]  #[0.0] * 7
         self.sensor_humidity = [random.uniform(50, 15) for _ in range(100)]
@@ -25,6 +38,12 @@ class mes:
         self.production_humidity = [random.uniform(30, 80) for _ in range(10)]
         self.production_vibration = [random.uniform(0.1, 0.5) for _ in range(10)]
         self.production_shift = np.random.choice([1, 2, 3], size=10).tolist() 
+
+    def generate_MotorSpeed_and_Temperatures(self):
+        motor_temperatures = [round(random.uniform(0, 100),2) for _ in range(100)]
+        rates = [5000 - (temp * 30) + np.random.normal(0, 100) for temp in motor_temperatures]
+        motor_speed = [round(random.uniform(rate / 2, 8000), 0) for rate in rates]
+        return motor_speed , motor_temperatures
 
     def generate_signal_data(self):
         # Define parameters

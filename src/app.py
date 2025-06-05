@@ -350,21 +350,24 @@ def motorSpeed():
     dataset = None
     motor_speeds_data = None
     csv_data = None
+    anomaly_percentages = None
     if cache is not None:
         csv_data = cache.get("motor_csv") if cache.exists("motor_csv") else None
         motor_speeds_data = cache.get("motor_data") if cache.exists("motor_data") else None
         dataset = cache.get('motor_chart_data') if cache.exists('motor_chart_data') else None
+        anomaly_percentages = cache.get('anomaly_percentages') if cache.exists('anomaly_percentages') else None
         model_eq = cache.get('motor_eq') if cache.exists('motor_eq') else None
         r2_text = cache.get('motor_r2') if cache.exists('motor_r2') else None
 
-    if csv_data and motor_speeds_data and dataset:
+    if csv_data and motor_speeds_data and dataset and anomaly_percentages:
         print("Using cached data...")
         motor_speeds_data = json.loads(motor_speeds_data)
-        dataset = json.loads(dataset)
+        anomaly_percentages = json.loads(anomaly_percentages)
+        dataset = json.loads(dataset)    
     else:
-     # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
+        # Fetch temperature and motor speed data from OPC UA server (simulate if unavailable)
+        anomaly_percentages = []
         df = pd.DataFrame()
-        datasets = []
         client = Client("opc.tcp://0.0.0.0:4840/server/")
         try:
             client.connect()
@@ -380,6 +383,22 @@ def motorSpeed():
                 df[f'Actual Speed {j+1}'] = motor_speeds
                 all_speeds += motor_speeds
 
+                col = f'Actual Speed {j+1}'
+                total_readings = len(df[col])  # Total data points per sensor
+                indexer = pd.api.indexers.FixedForwardWindowIndexer(window_size=10)
+                rolling_mean = df[col].rolling(window=indexer,min_periods=1).mean()
+                rolling_std = df[col].rolling(window=indexer).std().dropna()
+                
+                lower_bound = rolling_mean - 1.5 * rolling_std  
+                upper_bound =rolling_mean + 1.5 * rolling_std  
+               
+                # Detect anomalies individually per motor
+                anomalies = (df[col] < lower_bound) | (df[col] > upper_bound)
+                
+                # Count anomalies for percentage calculation
+                anomaly_percentage = (anomalies.sum() / total_readings) * 100  # Convert to percentage          
+
+                anomaly_percentages.append(round(anomaly_percentage))
         finally:
             client.disconnect()
 
@@ -419,6 +438,8 @@ def motorSpeed():
 
         if cache is not None:
             cache.set('motor_chart_data', json.dumps(dataset), ex=60*60) 
+            cache.set('anomaly_percentages', json.dumps(anomaly_percentages), ex=60*60) 
+            
             cache.set("motor_csv", csv_data)  # Cache CSV data for download
             cache.set("motor_data", json.dumps(motor_speeds_data), ex=60*60)  # Cache motor speeds data for 1 hour
             cache.set('motor_eq', model_eq, ex=60*60)  # Cache model equation for 1 hour
@@ -446,7 +467,8 @@ def motorSpeed():
             "motorSpeed.html",
             model_eq=model_eq,
             r2_text=r2_text,
-            current_user=current_user
+            current_user=current_user,
+            datas = anomaly_percentages
         )
 
 @app.route('/senser/download_csv')
@@ -467,7 +489,7 @@ def senser():
         chart_data = cache.get('senser_chart_data') if cache.exists('senser_chart_data') else None
         anomaly_percentages = cache.get('anomaly_percentages') if cache.exists('anomaly_percentages') else None
 
-    if chart_data and sensor_data:
+    if chart_data and sensor_data and anomaly_percentages:
         sensors = json.loads(sensor_data)
         datasets = json.loads(chart_data)
         anomaly_percentages = json.loads(anomaly_percentages)
@@ -507,8 +529,9 @@ def senser():
                 total_readings = len(df[sensor])  # Total data points per sensor
 
                 # Calculate rolling mean and std for dynamic thresholding (APPLY ONLY TO SENSOR COLUMN)
-                rolling_mean = df[sensor].rolling(window=20).mean()
-                rolling_std = df[sensor].rolling(window=20).std()
+                rolling_mean = df[sensor].rolling(window=20, min_periods=1).mean()
+                rolling_std = df[sensor].rolling(window=20, min_periods=1).std()
+                rolling_std = rolling_std.fillna(np.random.uniform(0, df[sensor].std()))
 
                 # Dynamic anomaly detection: Signals deviating beyond rolling mean ± 3*rolling_std
                 anomalies = (df[sensor] < rolling_mean - 2*rolling_std) | (df[sensor] > rolling_mean + 2*rolling_std)
