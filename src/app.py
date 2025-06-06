@@ -418,17 +418,20 @@ def motorSpeed():
         r2_text = f"Model Accuracy (R²): {r2:.3f}"
       
         dataset = {
-            'labels': temperatures,
+            'labels': temperatures[:10],
             'datasets': [
                 {
                     'label': 'Actual Data',
-                    'data': all_speeds,
-                    'yAxisID': 'y'
+                    'data': all_speeds[:10],
+                    'yAxisID': 'y',
+                    'type': 'bar',
+                    'order': 1
                 },
                 {
                     'label': 'Learned Trend Line',
-                    'data': predicted_speed.tolist(),
-                    'yAxisID': 'y1'
+                    'data': predicted_speed.tolist()[:10],
+                    'yAxisID': 'y1',
+                    'order': 0
                 }
             ]
         }
@@ -525,14 +528,14 @@ def senser():
                     'data': data
                 }) 
            
-            for sensor in df.columns:  # Iterate through each sensor column
+            indexer = pd.api.indexers.FixedForwardWindowIndexer(window_size=10)
+            for sensor in df.columns: 
                 total_readings = len(df[sensor])  # Total data points per sensor
 
                 # Calculate rolling mean and std for dynamic thresholding (APPLY ONLY TO SENSOR COLUMN)
-                rolling_mean = df[sensor].rolling(window=20, min_periods=1).mean()
-                rolling_std = df[sensor].rolling(window=20, min_periods=1).std()
-                rolling_std = rolling_std.fillna(np.random.uniform(0, df[sensor].std()))
-
+                rolling_mean = df[sensor].rolling(window=indexer, min_periods=1).mean()
+                rolling_std = df[sensor].rolling(window=indexer).std().dropna()
+               
                 # Dynamic anomaly detection: Signals deviating beyond rolling mean ± 3*rolling_std
                 anomalies = (df[sensor] < rolling_mean - 2*rolling_std) | (df[sensor] > rolling_mean + 2*rolling_std)
 
@@ -540,6 +543,7 @@ def senser():
                 anomaly_percentage = (anomalies.sum() / total_readings) * 100  # Convert to percentage
                 # Store results
                 anomaly_percentages.append(round(anomaly_percentage))  
+
             sensor_data = df.copy()
         
             model = IsolationForest(contamination=0.1).fit(sensor_data)
