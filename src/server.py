@@ -24,16 +24,18 @@ machines_folder = objects.add_folder(f"ns={idx};s=Machines", "Machines")
 
 # Create Machine object and variables
 for i in range(1, 10):
-    machine = machines_folder.add_object(f"ns={idx};s=Machine{i}", f"Machine{i}")
-    MachineID = machine.add_variable(idx, "MachineID", f"Machine {i}")
+    _machine,temperatures,vibrations,uptime = mes_instance.generate_Machine_data()
+
+    machine = machines_folder.add_object(f"ns={idx};s={_machine[0][i]}", _machine[0][i])
+    MachineID = machine.add_variable(idx, "MachineID", _machine[0][i])
     MachineID.set_writable()
 
-    Machine_Temperatures = machine.add_variable(idx, "Machine_Temperatures", mes_instance.Machine_Temperatures)
+    Machine_Temperatures = machine.add_variable(idx, "Machine_Temperatures", temperatures)
     Machine_Temperatures.set_writable()
 
-    Machine_Vibrations = machine.add_variable(idx, "Machine_Vibrations", mes_instance.Machine_Vibrations)
+    Machine_Vibrations = machine.add_variable(idx, "Machine_Vibrations", vibrations)
     Machine_Vibrations.set_writable()
-    Machine_Uptime = machine.add_variable(idx, "Machine_Uptime", mes_instance.Machine_Uptime)
+    Machine_Uptime = machine.add_variable(idx, "Machine_Uptime", uptime)
     Machine_Uptime.set_writable()
 
 for i in range(1, 8):
@@ -47,22 +49,22 @@ for i in range(1, 8):
 
 # Create Sensor objects and variables
 for i in range(1, 6):
+    signal,temperatures,humidity,vibration,age = mes_instance.generate_signal_data()
+
     sensor = sensors_folder.add_object(f"ns={idx};s=Sensor{i}", f"Sensor{i}")
-    sensor_temperature = sensor.add_variable(idx, "Temperatures", mes_instance.sensor_temperatures)
+    sensor_temperature = sensor.add_variable(idx, "Temperatures", temperatures)
     sensor_temperature.set_writable()
 
-    sensor_humidity = sensor.add_variable(idx, "Humidity", mes_instance.sensor_humidity)
+    sensor_humidity = sensor.add_variable(idx, "Humidity", humidity)
     sensor_humidity.set_writable()
 
-    sensor_vibration = sensor.add_variable(idx, "Vibration", mes_instance.sensor_vibration)
+    sensor_vibration = sensor.add_variable(idx, "Vibration", vibration)
     sensor_vibration.set_writable()
-
-    signal = mes_instance.generate_signal_data()
 
     sensor_signal = sensor.add_variable(idx, "Signal", signal.tolist())
     sensor_signal.set_writable()
 
-    sensor_age = sensor.add_variable(idx, "Age", mes_instance.sensor_age)
+    sensor_age = sensor.add_variable(idx, "Age", age)
 
 # Create Product objects and variables
 products = mes.load_products()
@@ -73,13 +75,13 @@ for i,item in enumerate(products):
     Shifts = product.add_variable(idx, "Shifts", item['shifts'])
     Shifts.set_writable()
 
-    product_temperature = product.add_variable(idx, "Temperature", mes_instance.production_temperature)
+    product_temperature = product.add_variable(idx, "Temperature", item['temperature'] )
     product_temperature.set_writable()
 
-    product_humidity = product.add_variable(idx, "Humidity", mes_instance.production_humidity)
+    product_humidity = product.add_variable(idx, "Humidity", item['humidity'] )
     product_humidity.set_writable()
 
-    product_vibration = product.add_variable(idx, "Vibration", mes_instance.production_vibration)
+    product_vibration = product.add_variable(idx, "Vibration", item['vibration'] )
     product_vibration.set_writable()
 try:
     print("Server started. You can connect to opc.tcp://0.0.0.0:4840/server/")
