@@ -219,12 +219,10 @@ async function InitializejqGrid(tableid = '', caption = '', colModels = [], url_
         searching: {
             defaultSearch: "bw"
         },
-        guiStyle: "bootstrap",
-        iconSet: "fontAwesome",
-        idPrefix: "gb1_",
         rownumbers: true,
         pager: "#gridpager",
         //pager: true,
+        autowidth: true,
         rowNum: 15,
         sortname: "invdate",
         sortorder: "desc",

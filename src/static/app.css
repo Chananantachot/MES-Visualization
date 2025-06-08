@@ -377,7 +377,7 @@ body {
     display: grid;
 }
 
-  .ui-jqgrid.ui-jqgrid-bootstrap {
+  .ui-jqgrid {
     display: none;
   }
 

@@ -13,11 +13,11 @@ import pandas as pd
 import matplotlib
 
 from flask import (
-    Flask, Response, json, make_response, send_file, send_from_directory, url_for, render_template, jsonify,
+    Flask, Response, json, make_response, send_from_directory, url_for, render_template, jsonify,
     request, redirect, g
 )
 from flask_jwt_extended import (
-    jwt_required, JWTManager,
+    get_jwt, jwt_required, JWTManager,
     get_jwt_identity, unset_jwt_cookies, verify_jwt_in_request
 )
 
@@ -59,7 +59,7 @@ def close_connection(exception):
 def before_request():
     authDb.init_db()
 
-    if request.endpoint in ['sw','users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
+    if request.endpoint in ['users.user', 'users.roles','sw','users.newUser','users.register', 'users.signin','users.login','users.activateUser','static']:
         return
     try:
         verify_jwt_in_request()
@@ -585,6 +585,12 @@ def senser():
         
         current_user = get_jwt_identity()   
         return render_template('senser.html',current_user = current_user, datas=anomaly_percentages)
+
+# Pagination function
+def get_page(data, page_number, page_size):
+    start_index = (page_number - 1) * page_size
+    end_index = start_index + page_size
+    return data[start_index:end_index] 
 
 @jwt.expired_token_loader
 def expired_token_callback(jwt_header, jwt_payload):
