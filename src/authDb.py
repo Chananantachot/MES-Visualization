@@ -226,10 +226,9 @@ class authDb:
         return True
 
     @staticmethod
-    def deleteUserRoles(id):
+    def deleteUserRoles(roleid, userId):
         db = authDb.get_db()
         cursor = db.cursor()
-        userid = str(uuid.uuid4())
-        cursor.execute('DELETE FROM userInRoles WHERE roleId = ?', (id,))
+        cursor.execute('DELETE FROM userInRoles WHERE roleId = ? AND userId = ?', (roleid,userId,))
         db.commit()
-        return userid
+        return True

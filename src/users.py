@@ -171,21 +171,27 @@ def roles():
 @users.route('/api/roles/<roleId>/assignment', methods=['GET','POST'])
 @role_required('Admin')
 def rolesAssignment(roleId):
-   # roleId = request.args.get('roleId')
+    users = []
+    if roleId:
+        users = authDb.getAssignedUserRoles(roleId)
+    
     if request.method == 'GET':
-        if roleId:
-            users = authDb.getAssignedUserRoles(roleId)
-            jsonResponse = [dict(u) for u in users]
-            return jsonify(jsonResponse)
-    elif request.method == 'POST':
-            user_ids = request.form.getlist('user_ids[]')  # List of user IDs to assign
-            if roleId:
-                authDb.deleteUserRoles(roleId)
-                for userid in user_ids:
+        jsonResponse = [dict(u) for u in users]
+        return jsonify(jsonResponse),200
+    
+    if request.method == 'POST':
+        user_ids = request.form.getlist('user_ids[]')  # List of user IDs to assign
+        for user in users:
+            if user['id'] not in user_ids and user['assigned'] == 1:
+                authDb.deleteUserRoles(roleId, user['id'])
+                
+            for userid in user_ids:
+                if user['id'] == userid and user['assigned'] == 0: # Will skip the ids that already assigned
                     authDb.addUserInRoles(roleId,userid)
-                return jsonify({"status": "success"})
-    else:
-        return jsonify({"status": "failed"}) ,404
+                
+        return jsonify({"status": "success"}),200
+  
+  
 
 @users.route("/token/refresh", methods=["POST"])
 @jwt_required(refresh=True)
@@ -198,7 +204,7 @@ def refresh():
     revoked_tokens.add(jti)
     revoked_tokens.add(roles)
     identity = get_jwt_identity()
-    access_token = create_access_token(identity=identity)
+    access_token = create_access_token(identity=identity, additional_claims={"roles": roles})
     refresh_token = create_refresh_token(identity=identity, additional_claims={"jti": str(uuid.uuid4()), "roles": roles})
     response = make_response(redirect(request.args.get("next") or url_for("homepage")))
     set_access_cookies(response, access_token)

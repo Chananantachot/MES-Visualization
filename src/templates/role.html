@@ -1,4 +1,4 @@
-{% extends "layout.html" %} 
+{% extends "layout.html" %}
 {% block styles %}
 <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
@@ -15,24 +15,24 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/free-jqgrid/4.15.5/jquery.jqgrid.min.js"></script>
 <script>
   "use strict";
-  
+  var subgrid_table_id;
   $("#grid").jqGrid({
     url: '/api/roles',
-    editurl: '/api/roles/edit', 
+    editurl: '/api/roles/edit',
     datatype: "json",
     mtype: 'GET',
     colModel: [
-        {
-          name: 'id',
-          index: 'id',
-          key: true, 
-          hidden: true 
-        },  
-        { label: 'Role', name: 'roleName', width: 150, editable: true },
-        { label: 'Description', name: 'description', width: 100, editable: true },
-        { label: 'Active', name: 'active', width: 70, editable: true, template: "booleanCheckbox" },
-        { label: 'Date created', name: 'created_at', width: 100, editable: false , align: 'center' , formatter: 'date'},
-        { label: 'Date updated', name: 'updated_at', width: 100, editable: false, align: 'center' ,formatter: 'date'}
+      {
+        name: 'id',
+        index: 'id',
+        key: true,
+        hidden: true
+      },
+      { label: 'Role', name: 'roleName', width: 150, editable: true },
+      { label: 'Description', name: 'description', width: 100, editable: true },
+      { label: 'Active', name: 'active', width: 70, editable: true, template: "booleanCheckbox" },
+      { label: 'Date created', name: 'created_at', width: 100, editable: false, align: 'center', formatter: 'date' },
+      { label: 'Date updated', name: 'updated_at', width: 100, editable: false, align: 'center', formatter: 'date' }
     ],
     multiselect: false,
     rownumbers: true,
@@ -44,66 +44,73 @@
     autowidth: true,
     viewrecords: true,
     subGrid: true,
-    subGridRowExpanded: function(subgrid_id, id) {
+    subGridRowExpanded: function (subgrid_id, id) {
       var roleId = id;
-      var subgrid_table_id = subgrid_id + "_t";
-      var pager_id = "p_"+subgrid_table_id;
-      $("#" + subgrid_id).html("<table id='" + subgrid_table_id + "'></table><div id='"+pager_id+"' class='scroll'></div>");
+      subgrid_table_id = subgrid_id + "_t";
+      var pager_id = "p_" + subgrid_table_id;
+      $("#" + subgrid_id).html("<table id='" + subgrid_table_id + "'></table><div id='" + pager_id + "' class='scroll'></div>");
       $("#" + subgrid_table_id).jqGrid({
-        url: '/api/roles/'+ id +'/assignment',
-          datatype: "json",
-          colModel: [
-            { name: 'id', key: true, hidden: true },
-            { name: 'fullname', label: 'User Name' },
-            { name: 'email', label: 'Email' },
-            {
-              name: 'assigned',
-              label: 'Assigned',
-              formatter: "checkbox",
-              edittype: "checkbox",
-              align: "center"
+        url: '/api/roles/' + id + '/assignment',
+        datatype: "json",
+        colModel: [
+          { name: 'id', key: true, hidden: true },
+          { name: 'fullname', label: 'User Name' },
+          { name: 'email', label: 'Email' },
+          {
+            name: 'assigned',
+            label: 'Assigned',
+            formatter: "checkbox",
+            edittype: "checkbox",
+            align: "center"
+          }
+        ],
+        pager: pager_id,
+        multiselect: true,
+        height: "100%",
+        caption: "Users in Role",
+        loadComplete: function (data) {
+          let users = data;
+          users.forEach((user, idx) => {
+            if (user.assigned) {
+              $("#" + subgrid_table_id).jqGrid('setSelection', user.id);
             }
-          ],
-          autowidth: true,
-          pager: pager_id,
-          multiselect: true,
-          height: "100%",
-          caption: "Users in Role"
+          });
+        }
       });
 
-      $("#"+subgrid_table_id).navGrid("#"+ pager_id,{ edit: false, add: false, del: false, search: false, refresh: false })
+      $("#" + subgrid_table_id).navGrid("#" + pager_id, { edit: false, add: false, del: false, search: false, refresh: false })
 
-      $("#"+subgrid_table_id).navButtonAdd("#" + pager_id,{
+      $("#" + subgrid_table_id).navButtonAdd("#" + pager_id, {
         buttonicon: "ui-icon-circle-plus",
         title: "Assign",
         caption: "Assign",
         position: "last",
         onClickButton: function () {
-          var ids = $("#" + subgrid_table_id).jqGrid('getGridParam','selarrrow');
-            $.post('/api/roles/'+ id +'/assignment', {
-              user_ids: ids
-            }, function () {
-              $("#"+subgrid_table_id).remove();
-            })
+          var ids = $("#" + subgrid_table_id).jqGrid('getGridParam', 'selarrrow');
+          $.post('/api/roles/' + id + '/assignment', {
+            user_ids: ids
+          }, function () {
+            $("#" + subgrid_table_id).remove();
+          })
         }
       });
-    }, 
+    },
   });
 
   $("#grid").navGrid("#pager",
     { edit: true, add: true, del: false, search: false, refresh: true },
-      {
-        // Edit options
-        url: '/api/roles/edit',
-        closeAfterEdit: true,
-        reloadAfterSubmit: true
-      },
-      {
-        // Add options
-        url: '/api/roles/create',
-        closeAfterAdd: true,
-        reloadAfterSubmit: true
-      }
+    {
+      // Edit options
+      url: '/api/roles/edit',
+      closeAfterEdit: true,
+      reloadAfterSubmit: true
+    },
+    {
+      // Add options
+      url: '/api/roles/create',
+      closeAfterAdd: true,
+      reloadAfterSubmit: true
+    }
   );
 </script>
 {% endblock %}
